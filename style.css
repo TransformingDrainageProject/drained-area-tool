@@ -81,3 +81,12 @@ body,
 #titlePane {
   width: 15%;
 }
+
+#info {
+  position: absolute;
+  left: 30px;
+  bottom: 80px;
+  color: #000;
+  background-color: white;
+  z-index: 50;
+}
