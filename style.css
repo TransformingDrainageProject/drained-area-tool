@@ -1,0 +1,83 @@
+html,
+body,
+.container,
+#map {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.esriScalebar {
+  padding: 6px 38px 4px 4px;
+  background-color: white;
+  border-radius: 4px;
+  opacity: 0.6;
+  width: auto;
+  height: auto;
+}
+
+.esriScalebar:hover {
+  opacity: 0.99;
+}
+
+.esriScalebarLabel {
+  color: black;
+  font-family: Arial;
+  font-size: 9pt;
+}
+
+.esriScalebarLine {
+  border-color: black;
+}
+
+#layerListPane {
+  width: 18%;
+}
+
+.esriLayer {
+  background-color: #fff;
+  color: black;
+}
+
+.esriLayerList .esriList {
+  border-top: solid;
+}
+
+.esriLayerList .esriTitle {
+  background-color: #fff;
+  border-bottom: solid;
+  color: black;
+  font-size: 12pt;
+}
+
+.esriLayerList .esriList ul {
+  background-color: #fff;
+}
+
+#search {
+  display: block;
+  position: absolute;
+  z-index: 3;
+  top: 20px;
+  left: 75px;
+}
+
+#HomeButton {
+  position: absolute;
+  top: 100px;
+  left: 20px;
+  z-index: 50;
+}
+
+#LocateButton {
+  position: absolute;
+  top: 150px;
+  left: 20px;
+  z-index: 50;
+}
+
+#titlePane {
+  width: 15%;
+}
