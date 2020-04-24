@@ -16,6 +16,7 @@ require([
   'esri/dijit/Search',
   'esri/layers/ArcGISDynamicMapServiceLayer',
   'esri/layers/ArcGISTiledMapServiceLayer',
+  'esri/layers/FeatureLayer',
   'esri/dijit/LayerList',
   'esri/dijit/Legend',
   'esri/dijit/Scalebar',
@@ -46,6 +47,7 @@ require([
   Search,
   ArcGISDynamicMapServiceLayer,
   ArcGISTiledMapServiceLayer,
+  FeatureLayer,
   LayerList,
   Legend,
   Scalebar,
@@ -124,6 +126,9 @@ require([
   search.startup();
 
   //Add dynamic map layers from Mapserver
+  const huc12FeatureLayer = new FeatureLayer(
+    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6'
+  );
 
   const featureURL0 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/studyarea/MapServer';
@@ -261,11 +266,33 @@ require([
     identifyParams.height = map.height;
 
     dojo.connect(map, 'onClick', function (event) {
-      executeIdentifyTask(event, identifyParams, identifyTask);
+      huc12FeatureLayer
+        .queryFeatures({
+          geometry: event.mapPoint,
+          outFields: ['*'],
+          returnGeometry: false,
+        })
+        .then(function (result) {
+          executeIdentifyTask(
+            event,
+            identifyParams,
+            identifyTask,
+            result.features[0].attributes
+          );
+        })
+        .catch(function (err) {
+          console.log(err);
+        });
     });
   }
 
-  function executeIdentifyTask(event, identifyParams, identifyTask) {
+  function executeIdentifyTask(
+    event,
+    identifyParams,
+    identifyTask,
+    featureAttributes
+  ) {
+    console.log('executeIdentifyTask');
     identifyParams.geometry = event.mapPoint;
     identifyParams.mapExtent = map.extent;
 
@@ -276,7 +303,6 @@ require([
       return arrayUtils.map(response, function (result) {
         let feature = result.feature;
         let layerName = 'Drainage conditions';
-
         feature.attributes.layerName = layerName;
 
         const condition = {
@@ -295,7 +321,11 @@ require([
           layerName,
           condition[feature.attributes['Pixel Value']] +
             '<br/><br/>Natural drainage class: ' +
-            naturalClass[feature.attributes['Pixel Value']]
+            naturalClass[feature.attributes['Pixel Value']] +
+            '<br/><br/>Area (ac): ' +
+            featureAttributes['AREAACRES'] +
+            '<br/><br/>HUC12: ' +
+            featureAttributes['HUC12']
         );
 
         feature.setInfoTemplate(drainageCondition);
