@@ -36,9 +36,7 @@ require([
   Color,
   domConstruct,
   Map,
-  BasemapToggle,
   BasemapGallery,
-  arcgisUtils,
   HomeButton,
   LocateButton,
   Search,
@@ -52,7 +50,6 @@ require([
   IdentifyParameters,
   arrayUtils,
   InfoTemplate,
-  All,
   dom
 ) {
   parser.parse();
