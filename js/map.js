@@ -1,3 +1,5 @@
+'use strict';
+
 require([
   'dojo/parser',
   'esri/dijit/Popup',
@@ -172,7 +174,7 @@ require([
 
     let layerLegends = [];
 
-    for (i = 0; i < layerInfo.length; i++) {
+    for (let i = 0; i < layerInfo.length; i++) {
       if (layerInfo[i].layer.id !== '3') {
         layerLegends.push(layerInfo[i]);
       }
@@ -247,21 +249,23 @@ require([
   });
 
   function mapReady(map) {
-    dojo.connect(map, 'onClick', executeIdentifyTask);
-
-    identifyTask = new IdentifyTask(
+    const identifyTask = new IdentifyTask(
       'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer'
     );
-    identifyParams = new IdentifyParameters();
+    const identifyParams = new IdentifyParameters();
     identifyParams.tolerance = 1;
     identifyParams.returnGeometry = true;
     identifyParams.layerIds = [0];
     identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
     identifyParams.width = map.width;
     identifyParams.height = map.height;
+
+    dojo.connect(map, 'onClick', function (event) {
+      executeIdentifyTask(event, identifyParams, identifyTask);
+    });
   }
 
-  function executeIdentifyTask(event) {
+  function executeIdentifyTask(event, identifyParams, identifyTask) {
     identifyParams.geometry = event.mapPoint;
     identifyParams.mapExtent = map.extent;
 
