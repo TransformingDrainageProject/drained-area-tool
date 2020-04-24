@@ -58,7 +58,7 @@ require([
   parser.parse();
 
   //Add widgets on the map
-  var popup = new Popup(
+  const popup = new Popup(
     {
       fillSymbol: new SimpleFillSymbol(
         SimpleFillSymbol.STYLE_SOLID,
@@ -73,14 +73,14 @@ require([
     domConstruct.create('div')
   );
 
-  var map = new Map('map', {
+  const map = new Map('map', {
     basemap: 'topo',
     center: [-90.048, 43.0],
     zoom: 6,
     infoWindow: popup,
   });
 
-  var basemapGallery = new BasemapGallery(
+  const basemapGallery = new BasemapGallery(
     {
       showArcGISBasemaps: true,
       map: map,
@@ -94,7 +94,7 @@ require([
     console.log('basemap gallery error:  ', msg);
   });
 
-  var home = new HomeButton(
+  const home = new HomeButton(
     {
       map: map,
     },
@@ -103,7 +103,7 @@ require([
 
   home.startup();
 
-  var geoLocate = new LocateButton(
+  const geoLocate = new LocateButton(
     {
       map: map,
     },
@@ -112,7 +112,7 @@ require([
 
   geoLocate.startup();
 
-  var search = new Search(
+  const search = new Search(
     {
       map: map,
     },
@@ -123,36 +123,36 @@ require([
 
   //Add dynamic map layers from Mapserver
 
-  var featureURL0 =
+  const featureURL0 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/studyarea/MapServer';
 
-  var operationalLayer0 = new ArcGISDynamicMapServiceLayer(featureURL0, {
+  const operationalLayer0 = new ArcGISDynamicMapServiceLayer(featureURL0, {
     visible: true,
     id: '0',
   });
 
-  var rasterURL1 =
+  const rasterURL1 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
 
-  var operationalLayer1 = new ArcGISDynamicMapServiceLayer(rasterURL1, {
+  const operationalLayer1 = new ArcGISDynamicMapServiceLayer(rasterURL1, {
     opacity: 0.6,
     visible: true,
     id: '1',
   });
 
-  var rasterURL2 =
+  const rasterURL2 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_CONUS_Drainage_Classes/MapServer';
 
-  var operationalLayer2 = new ArcGISTiledMapServiceLayer(rasterURL2, {
+  const operationalLayer2 = new ArcGISTiledMapServiceLayer(rasterURL2, {
     opacity: 0.6,
     visible: false,
     id: '2',
   });
 
-  var rasterURL3 =
+  const rasterURL3 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_Hillshade/MapServer';
 
-  var operationalLayer3 = new ArcGISTiledMapServiceLayer(rasterURL3, {
+  const operationalLayer3 = new ArcGISTiledMapServiceLayer(rasterURL3, {
     opacity: 0.3,
     visible: true,
     id: '3',
@@ -166,21 +166,20 @@ require([
   ]);
 
   map.on('layers-add-result', function (evt) {
-    var layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
+    const layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
       return { layer: layer.layer, title: ' ' };
     });
 
-    var layerLegends = [];
+    let layerLegends = [];
 
     for (i = 0; i < layerInfo.length; i++) {
       if (layerInfo[i].layer.id !== '3') {
         layerLegends.push(layerInfo[i]);
-      } else {
       }
     }
 
     if (layerLegends.length > 0) {
-      var legendDijit = new Legend(
+      const legendDijit = new Legend(
         {
           map: map,
 
@@ -188,7 +187,6 @@ require([
         },
         'legendDiv'
       );
-
       legendDijit.startup();
     }
   });
@@ -197,7 +195,7 @@ require([
   dojo.connect(map, 'onLoad', mapReady);
   dojo.connect(map, 'onMouseMove', showCoordinates);
 
-  var layerList = new LayerList(
+  const layerList = new LayerList(
     {
       map: map,
       layers: [
@@ -218,10 +216,9 @@ require([
     },
     'layerList'
   );
-
   layerList.startup();
 
-  var layerList1 = new LayerList(
+  const layerList1 = new LayerList(
     {
       map: map,
       layers: [
@@ -242,10 +239,9 @@ require([
     },
     'layerList1'
   );
-
   layerList1.startup();
 
-  var scalebar = new Scalebar({
+  const scalebar = new Scalebar({
     map: map,
     scalebarUnit: 'dual',
   });
@@ -269,29 +265,29 @@ require([
     identifyParams.geometry = event.mapPoint;
     identifyParams.mapExtent = map.extent;
 
-    var deferred = identifyTask.execute(identifyParams);
+    const deferred = identifyTask.execute(identifyParams);
     deferred.addCallback(function (response) {
       // response is an array of identify result objects
       // Let's return an array of features.
       return arrayUtils.map(response, function (result) {
-        var feature = result.feature;
-        var layerName = 'Drainage conditions';
+        let feature = result.feature;
+        let layerName = 'Drainage conditions';
 
         feature.attributes.layerName = layerName;
 
-        var condition = {
+        const condition = {
           0: 'Unlikely to be drained',
           1: 'Potentially drained',
           2: 'Likely to be drained',
         };
 
-        var naturalClass = {
+        const naturalClass = {
           0: 'Moderately well - Excessively drained',
           1: 'Somewhat poorly drained',
           2: 'Poorly - Very poorly drained',
         };
 
-        var drainageCondition = new InfoTemplate(
+        const drainageCondition = new InfoTemplate(
           layerName,
           condition[feature.attributes['Pixel Value']] +
             '<br/><br/>Natural drainage class: ' +
@@ -315,7 +311,7 @@ require([
 
   function showCoordinates(evt) {
     //the map is in web mercator but display coordinates in geographic (lat, long)
-    var mp = webMercatorUtils.webMercatorToGeographic(evt.mapPoint);
+    const mp = webMercatorUtils.webMercatorToGeographic(evt.mapPoint);
 
     //display mouse coordinates
     dom.byId('info').innerHTML = mp.x.toFixed(3) + ', ' + mp.y.toFixed(3);
