@@ -1,60 +1,32 @@
 require([
   'dojo/parser',
-
   'esri/dijit/Popup',
-
   'esri/symbols/SimpleFillSymbol',
-
   'esri/symbols/SimpleLineSymbol',
-
   'esri/Color',
-
   'dojo/dom-construct',
-
   'esri/map',
-
   'esri/dijit/BasemapToggle',
-
   'esri/dijit/BasemapGallery',
-
   'esri/arcgis/utils',
-
   'esri/dijit/HomeButton',
-
   'esri/dijit/LocateButton',
-
   'esri/dijit/Search',
-
   'esri/layers/ArcGISDynamicMapServiceLayer',
-
   'esri/layers/ArcGISTiledMapServiceLayer',
-
   'esri/dijit/LayerList',
-
   'esri/dijit/Legend',
-
   'esri/dijit/Scalebar',
-
   'esri/geometry/webMercatorUtils',
-
   'esri/tasks/IdentifyTask',
-
   'esri/tasks/IdentifyParameters',
-
   'dojo/_base/array',
-
   'esri/InfoTemplate',
-
   'dojo/promise/all',
-
   'dojo/dom',
-
   'dijit/layout/BorderContainer',
-
   'dijit/layout/ContentPane',
-
   'dijit/TitlePane',
-
   'dojo/domReady!',
 ], function (
   parser,
@@ -76,7 +48,6 @@ require([
   Legend,
   Scalebar,
   webMercatorUtils,
-
   IdentifyTask,
   IdentifyParameters,
   arrayUtils,
@@ -87,15 +58,12 @@ require([
   parser.parse();
 
   //Add widgets on the map
-
   var popup = new Popup(
     {
       fillSymbol: new SimpleFillSymbol(
         SimpleFillSymbol.STYLE_SOLID,
-
         new SimpleLineSymbol(
           SimpleLineSymbol.STYLE_SOLID,
-
           new Color([255, 0, 0]),
           2
         ),
@@ -107,11 +75,8 @@ require([
 
   var map = new Map('map', {
     basemap: 'topo',
-
     center: [-90.048, 43.0],
-
     zoom: 6,
-
     infoWindow: popup,
   });
 
@@ -229,37 +194,26 @@ require([
   });
 
   //Map event handling
-
   dojo.connect(map, 'onLoad', mapReady);
-
   dojo.connect(map, 'onMouseMove', showCoordinates);
 
   var layerList = new LayerList(
     {
       map: map,
-
       layers: [
         {
           layer: operationalLayer0,
-
           id: 'State Boundary',
-
           visibility: true,
         },
-
         {
           layer: operationalLayer3,
-
           id: 'Hillshade',
-
           visibility: true,
         },
       ],
-
       showLegend: false,
-
       showSubLayers: false,
-
       showOpacitySlider: false,
     },
     'layerList'
@@ -270,29 +224,20 @@ require([
   var layerList1 = new LayerList(
     {
       map: map,
-
       layers: [
         {
           layer: operationalLayer2,
-
           id: 'Natural Drainage Class',
-
           visibility: false,
         },
-
         {
           layer: operationalLayer1,
-
           id: 'Agriculture Drainage Likely Extent',
-
           visibility: true,
         },
       ],
-
       showLegend: false,
-
       showSubLayers: false,
-
       showOpacitySlider: false,
     },
     'layerList1'
@@ -302,11 +247,8 @@ require([
 
   var scalebar = new Scalebar({
     map: map,
-
     scalebarUnit: 'dual',
   });
-
-  scalebar.startup();
 
   function mapReady(map) {
     dojo.connect(map, 'onClick', executeIdentifyTask);
@@ -314,39 +256,26 @@ require([
     identifyTask = new IdentifyTask(
       'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer'
     );
-
     identifyParams = new IdentifyParameters();
-
     identifyParams.tolerance = 1;
-
     identifyParams.returnGeometry = true;
-
     identifyParams.layerIds = [0];
-
     identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
-
     identifyParams.width = map.width;
-
     identifyParams.height = map.height;
   }
 
   function executeIdentifyTask(event) {
     identifyParams.geometry = event.mapPoint;
-
     identifyParams.mapExtent = map.extent;
 
     var deferred = identifyTask.execute(identifyParams);
-
     deferred.addCallback(function (response) {
       // response is an array of identify result objects
       // Let's return an array of features.
-
       return arrayUtils.map(response, function (result) {
         var feature = result.feature;
-
         var layerName = 'Drainage conditions';
-
-        //alert(result);
 
         feature.attributes.layerName = layerName;
 
@@ -380,19 +309,15 @@ require([
     // above is not an array of features, then you need to add a callback
     // like the one above to post-process the response and return an
     // array of features.
-
     map.infoWindow.setFeatures([deferred]);
-
     map.infoWindow.show(event.mapPoint);
   }
 
   function showCoordinates(evt) {
     //the map is in web mercator but display coordinates in geographic (lat, long)
-
     var mp = webMercatorUtils.webMercatorToGeographic(evt.mapPoint);
 
     //display mouse coordinates
-
     dom.byId('info').innerHTML = mp.x.toFixed(3) + ', ' + mp.y.toFixed(3);
   }
 });
