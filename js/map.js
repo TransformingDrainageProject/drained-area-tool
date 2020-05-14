@@ -126,9 +126,22 @@ require([
   search.startup();
 
   //Add dynamic map layers from Mapserver
-  const huc12FeatureLayer = new FeatureLayer(
-    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6'
-  );
+  const huc8FeatureURL =
+    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
+
+  const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
+    visible: false,
+    id: 'huc8FL',
+  });
+
+  const countyFeatureURL =
+    'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Counties_Generalized/FeatureServer/0';
+
+  const countyFeatureLayer = new FeatureLayer(countyFeatureURL, {
+    opacity: 0.6,
+    visible: false,
+    id: 'countyFL',
+  });
 
   const featureURL0 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/studyarea/MapServer';
@@ -170,6 +183,8 @@ require([
     operationalLayer1,
     operationalLayer2,
     operationalLayer3,
+    huc8FeatureLayer,
+    countyFeatureLayer,
   ]);
 
   map.on('layers-add-result', function (evt) {
@@ -207,11 +222,6 @@ require([
       map: map,
       layers: [
         {
-          layer: operationalLayer0,
-          id: 'State Boundary',
-          visibility: true,
-        },
-        {
           layer: operationalLayer3,
           id: 'Hillshade',
           visibility: true,
@@ -248,6 +258,36 @@ require([
   );
   layerList1.startup();
 
+  const layerList2 = new LayerList(
+    {
+      map: map,
+      layers: [
+        {
+          layer: huc8FeatureLayer,
+          id: 'HUC8 Watershed',
+          title: 'HUC8 Watershed',
+          visibility: false,
+        },
+        {
+          layer: countyFeatureLayer,
+          id: 'County',
+          title: 'County',
+          visibility: false,
+        },
+        {
+          layer: operationalLayer0,
+          id: 'State',
+          visibility: true,
+        },
+      ],
+      showLegend: false,
+      showSubLayers: false,
+      showOpacitySlider: false,
+    },
+    'layerList2'
+  );
+  layerList2.startup();
+
   const scalebar = new Scalebar({
     map: map,
     scalebarUnit: 'dual',
@@ -266,7 +306,19 @@ require([
     identifyParams.height = map.height;
 
     dojo.connect(map, 'onClick', function (event) {
-      huc12FeatureLayer
+      // identify which layers are visible on the map
+      const layers = dojo.map(map.layerIds, function (layerId) {
+        return map.getLayer(layerId);
+      });
+      const layers_visible = dojo.filter(layers, function (layer) {
+        if (layer.visibleLayers[0] !== -1) {
+          return layer.getImageUrl && layer.visible;
+        }
+      });
+
+      console.log(layers_visible);
+
+      huc8FeatureLayer
         .queryFeatures({
           geometry: event.mapPoint,
           outFields: ['*'],
@@ -324,8 +376,8 @@ require([
             naturalClass[feature.attributes['Pixel Value']] +
             '<br/><br/>Area (ac): ' +
             featureAttributes['AREAACRES'] +
-            '<br/><br/>HUC12: ' +
-            featureAttributes['HUC12']
+            '<br/><br/>HUC8: ' +
+            featureAttributes['HUC8']
         );
 
         feature.setInfoTemplate(drainageCondition);
