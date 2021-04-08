@@ -23,6 +23,8 @@ require([
   'esri/geometry/webMercatorUtils',
   'esri/tasks/IdentifyTask',
   'esri/tasks/IdentifyParameters',
+  'esri/tasks/query',
+  'esri/tasks/QueryTask',
   'dojo/_base/array',
   'esri/InfoTemplate',
   'dojo/promise/all',
@@ -54,6 +56,8 @@ require([
   webMercatorUtils,
   IdentifyTask,
   IdentifyParameters,
+  Query,
+  QueryTask,
   arrayUtils,
   InfoTemplate,
   All,
@@ -127,11 +131,16 @@ require([
 
   //Add dynamic map layers from Mapserver
   const huc8FeatureURL =
-    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
+    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer';
 
-  const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
-    visible: false,
-    id: 'huc8FL',
+  // const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
+  //   visible: false,
+  //   id: 'huc8Layer',
+  // });
+
+  const huc8FeatureLayer = new ArcGISDynamicMapServiceLayer(huc8FeatureURL, {
+    visible: true,
+    id: 'huc8Layer',
   });
 
   const countyFeatureURL =
@@ -140,7 +149,7 @@ require([
   const countyFeatureLayer = new FeatureLayer(countyFeatureURL, {
     opacity: 0.6,
     visible: false,
-    id: 'countyFL',
+    id: 'countyLayer',
   });
 
   const featureURL0 =
@@ -148,7 +157,7 @@ require([
 
   const operationalLayer0 = new ArcGISDynamicMapServiceLayer(featureURL0, {
     visible: true,
-    id: '0',
+    id: 'stateLayer',
   });
 
   const rasterURL1 =
@@ -157,7 +166,7 @@ require([
   const operationalLayer1 = new ArcGISDynamicMapServiceLayer(rasterURL1, {
     opacity: 0.6,
     visible: true,
-    id: '1',
+    id: 'drainageExtentLayer',
   });
 
   const rasterURL2 =
@@ -166,7 +175,7 @@ require([
   const operationalLayer2 = new ArcGISTiledMapServiceLayer(rasterURL2, {
     opacity: 0.6,
     visible: false,
-    id: '2',
+    id: 'drainageClassLayer',
   });
 
   const rasterURL3 =
@@ -294,51 +303,181 @@ require([
   });
 
   function mapReady(map) {
-    const identifyTask = new IdentifyTask(
-      'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer'
-    );
-    const identifyParams = new IdentifyParameters();
-    identifyParams.tolerance = 1;
-    identifyParams.returnGeometry = true;
-    identifyParams.layerIds = [0];
-    identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
-    identifyParams.width = map.width;
-    identifyParams.height = map.height;
-
     dojo.connect(map, 'onClick', function (event) {
-      // identify which layers are visible on the map
-      const layers = dojo.map(map.layerIds, function (layerId) {
+      let identitfyResults = [];
+      let mapPoint = event.mapPoint;
+
+      const requiredLayers = [
+        'stateLayer',
+        'countyLayer',
+        'huc8Layer',
+        'drainageExtentLayer',
+        'drainageClassLayer',
+      ];
+
+      // Create array of dynamic nad feature layers' ids
+      const dynamicLayers = dojo.map(map.layerIds, function (layerId) {
         return map.getLayer(layerId);
       });
-      const layers_visible = dojo.filter(layers, function (layer) {
-        if (layer.visibleLayers[0] !== -1) {
-          return layer.getImageUrl && layer.visible;
+      const featureLayers = dojo.map(map.graphicsLayerIds, function (layerId) {
+        return map.getLayer(layerId);
+      });
+
+      // Filter layers to only layers that need identify operation (e.g. visible)
+      const showDynamicLayers = dojo.filter(dynamicLayers, function (layer) {
+        if (requiredLayers.indexOf(layer.id) > -1) {
+          if (layer.visible) {
+            return layer;
+          }
+        }
+      });
+      const showFeatureLayers = dojo.filter(featureLayers, function (layer) {
+        if (requiredLayers.indexOf(layer.id) > -1) {
+          if (layer.visible) {
+            return layer;
+          }
         }
       });
 
-      console.log(layers_visible);
+      // Create array of IdentifyTasks for each dynamic layer
+      const identifyTasks = dojo.map(showDynamicLayers, function (layer) {
+        return new IdentifyTask(layer.url);
+      });
 
-      huc8FeatureLayer
-        .queryFeatures({
-          geometry: event.mapPoint,
-          outFields: ['*'],
-          returnGeometry: false,
-        })
-        .then(function (result) {
-          executeIdentifyTask(
-            event,
-            identifyParams,
-            identifyTask,
-            result.features[0].attributes
-          );
-        })
-        .catch(function (err) {
-          console.log(err);
+      // Create array of Query tasks for each feature layer
+      const queryTasks = dojo.map(showFeatureLayers, function (layer) {
+        return new QueryTask(layer.url);
+      });
+
+      // Create array of IdentifyParameters for each layer
+      const params = createIdentifyParams(showDynamicLayers, event);
+
+      const queries = createQueryParams(showFeatureLayers, event);
+
+      const identifyPromises = identifyTasks.map(function (task, index) {
+        return task.execute(params[index]);
+      });
+
+      const queryPromises = queryTasks.map(function (task, index) {
+        return task.execute(queries[index]);
+      });
+
+      const promises = identifyPromises.concat(queryPromises);
+
+      Promise.all(promises).then(function (response) {
+        let responseLayers = { dynamic: [], feature: [] };
+        response.forEach(function (rep) {
+          if (Array.isArray(rep)) {
+            responseLayers.dynamic.push(rep);
+          } else {
+            responseLayers.feature.push(rep);
+          }
         });
+
+        executeIdentifyTask(responseLayers, identifyTasks, mapPoint);
+      });
+
+      // huc8FeatureLayer
+      //   .queryFeatures({
+      //     geometry: event.mapPoint,
+      //     outFields: ['*'],
+      //     returnGeometry: false,
+      //   })
+      //   .then(function (result) {
+      //     executeIdentifyTask(
+      //       event,
+      //       identifyParams,
+      //       identifyTask,
+      //       result.features[0].attributes
+      //     );
+      //   })
+      //   .catch(function (err) {
+      //     console.log(err);
+      //   });
     });
   }
 
-  function executeIdentifyTask(
+  function createQueryParams(showLayers, event) {
+    const queryParamsList = dojo.map(showLayers, function (layer) {
+      const queryParams = new Query();
+      queryParams.geometry = event.mapPoint;
+      queryParams.outFields = ['*'];
+      queryParams.returnGeometry = false;
+
+      return queryParams;
+    });
+
+    return queryParamsList;
+  }
+
+  function createIdentifyParams(showLayers, event) {
+    const identifyParamsList = dojo.map(showLayers, function (layer) {
+      const identifyParams = new IdentifyParameters();
+      identifyParams.width = map.width;
+      identifyParams.height = map.height;
+      identifyParams.geometry = event.mapPoint;
+      identifyParams.mapExtent = map.extent;
+      identifyParams.tolerance = 3;
+      identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_VISIBLE;
+      identifyParams.returnGeometry = true;
+
+      // Map service may have multiple layers, collect those here
+      const subLayers = dojo.map(layer.layerInfos, function (subLayer) {
+        if (subLayer.subLayerIds) {
+          return subLayer.subLayerIds;
+        } else {
+          return subLayer.id;
+        }
+      });
+      identifyParams.layerIds = subLayers;
+
+      return identifyParams;
+    });
+
+    return identifyParamsList;
+  }
+
+  function executeIdentifyTask(response, tasks, mapPoint) {
+    let results = [];
+    let taskUrls = [];
+    console.log(response.dynamic);
+    const dynamicLayers = dojo.filter(response.dynamic, function (layer) {
+      // Remove inner array
+      return layer[0];
+    });
+
+    for (let i = 0; i < dynamicLayers.length; i++) {
+      results = results.concat(dynamicLayers[i]);
+
+      for (let j = 0; j < dynamicLayers[i].length; j++) {
+        taskUrls = taskUrls.concat(tasks[i].url);
+      }
+    }
+
+    results = dojo.map(results, function (result, index) {
+      const feature = result.feature;
+      const layerName = result.layerName;
+      const serviceUrl = taskUrls[index];
+
+      feature.attributes.layerName = layerName;
+      console.log(feature);
+      const template = new InfoTemplate(layerName);
+      feature.setInfoTemplate(template);
+
+      return feature;
+    });
+
+    if (results.length === 0) {
+      map.infoWindow.clearFeatures();
+    } else {
+      map.infoWindow.setFeatures(results);
+    }
+    map.infoWindow.show(mapPoint);
+
+    return results;
+  }
+
+  function executeIdentifyTask2(
     event,
     identifyParams,
     identifyTask,
