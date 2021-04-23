@@ -33,6 +33,7 @@ require([
   'dijit/layout/ContentPane',
   'dijit/TitlePane',
   'dojo/domReady!',
+  'esri/layers/ImageParameters'
 ], function (
   parser,
   Popup,
@@ -61,7 +62,8 @@ require([
   arrayUtils,
   InfoTemplate,
   All,
-  dom
+  dom,
+  ImageParameters
 ) {
   parser.parse();
 
@@ -84,7 +86,7 @@ require([
   const map = new Map('map', {
     basemap: 'topo',
     center: [-90.048, 43.0],
-    zoom: 6,
+    zoom: 9,
     infoWindow: popup,
   });
 
@@ -131,17 +133,12 @@ require([
 
   //Add dynamic map layers from Mapserver
   const huc8FeatureURL =
-    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer';
+    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
 
-  // const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
-  //   visible: false,
-  //   id: 'huc8Layer',
-  // });
-
-  const huc8FeatureLayer = new ArcGISDynamicMapServiceLayer(huc8FeatureURL, {
-    visible: true,
-    id: 'huc8Layer',
-  });
+    const huc8FeatureLayer = new esri.layers.FeatureLayer(huc8FeatureURL, {
+	visible:false,
+	id: 'huc8Layer'
+   });
 
   const countyFeatureURL =
     'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Counties_Generalized/FeatureServer/0';
@@ -204,7 +201,7 @@ require([
     let layerLegends = [];
 
     for (let i = 0; i < layerInfo.length; i++) {
-      if (layerInfo[i].layer.id !== '3') {
+      if (layerInfo[i].layer.id !== '4') {
         layerLegends.push(layerInfo[i]);
       }
     }
@@ -309,8 +306,8 @@ require([
 
       const requiredLayers = [
         'stateLayer',
-        'countyLayer',
-        'huc8Layer',
+        'countyFeatureLayer',
+        'huc8FeatureLayer',
         'drainageExtentLayer',
         'drainageClassLayer',
       ];
@@ -326,21 +323,16 @@ require([
       // Filter layers to only layers that need identify operation (e.g. visible)
       const showDynamicLayers = dojo.filter(dynamicLayers, function (layer) {
         if (requiredLayers.indexOf(layer.id) > -1) {
-          if (layer.visible) {
+    //      if (layer.visible) {
             return layer;
-          }
+      //    }
         }
       });
       const showFeatureLayers = dojo.filter(featureLayers, function (layer) {
-        if (requiredLayers.indexOf(layer.id) > -1) {
-          if (layer.visible) {
             return layer;
-          }
-        }
       });
-
       // Create array of IdentifyTasks for each dynamic layer
-      const identifyTasks = dojo.map(showDynamicLayers, function (layer) {
+      var identifyTasks = dojo.map(showDynamicLayers, function (layer) {
         return new IdentifyTask(layer.url);
       });
 
@@ -361,9 +353,8 @@ require([
       const queryPromises = queryTasks.map(function (task, index) {
         return task.execute(queries[index]);
       });
-
       const promises = identifyPromises.concat(queryPromises);
-
+      
       Promise.all(promises).then(function (response) {
         let responseLayers = { dynamic: [], feature: [] };
         response.forEach(function (rep) {
@@ -373,27 +364,11 @@ require([
             responseLayers.feature.push(rep);
           }
         });
-
+//        identifyTasks = new IdentifyTask(huc8FeatureURL);
         executeIdentifyTask(responseLayers, identifyTasks, mapPoint);
+//	executeIdentifyTask2(event, createIdentifyParams(requiredLayers,event), identifyTasks );
       });
 
-      // huc8FeatureLayer
-      //   .queryFeatures({
-      //     geometry: event.mapPoint,
-      //     outFields: ['*'],
-      //     returnGeometry: false,
-      //   })
-      //   .then(function (result) {
-      //     executeIdentifyTask(
-      //       event,
-      //       identifyParams,
-      //       identifyTask,
-      //       result.features[0].attributes
-      //     );
-      //   })
-      //   .catch(function (err) {
-      //     console.log(err);
-      //   });
     });
   }
 
@@ -418,7 +393,7 @@ require([
       identifyParams.geometry = event.mapPoint;
       identifyParams.mapExtent = map.extent;
       identifyParams.tolerance = 3;
-      identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_VISIBLE;
+//      identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_VISIBLE;
       identifyParams.returnGeometry = true;
 
       // Map service may have multiple layers, collect those here
@@ -430,48 +405,71 @@ require([
         }
       });
       identifyParams.layerIds = subLayers;
-
+//      identifyParams.layerIds = [0,1,2,3,4];
       return identifyParams;
     });
 
     return identifyParamsList;
   }
 
-  function executeIdentifyTask(response, tasks, mapPoint) {
+  function executeIdentifyTask(response, tasks, mapPoint, queries, queryTasks) {
     let results = [];
     let taskUrls = [];
-    console.log(response.dynamic);
+    let featureResults = []; 
+   console.log(response);
     const dynamicLayers = dojo.filter(response.dynamic, function (layer) {
       // Remove inner array
-      return layer[0];
+    return layer[0];
     });
-
+    const featureLayers = dojo.filter(response.feature, function (layer) {
+	return layer;
+});
     for (let i = 0; i < dynamicLayers.length; i++) {
       results = results.concat(dynamicLayers[i]);
-
       for (let j = 0; j < dynamicLayers[i].length; j++) {
         taskUrls = taskUrls.concat(tasks[i].url);
       }
     }
+    for (let i = 0; i < featureLayers.length; i++) {
+     	featureResults = featureResults.concat(featureLayers[i]);
+    }
+    featureResults = dojo.map(featureResults, function (result, index) {
+	let feature = result.features[0];
+	var layerName;
+	if (result.fields[0].name == 'FID') {
+		layerName = 'Counties';
+	}
+	else {
+		layerName = 'HUC8 Watersheds';
+	}
+	feature.attributes.layerName = layerName;
+	console.log(feature);
+        const drainageCondition = new InfoTemplate(
+          layerName,
+        );
+        feature.setInfoTemplate(drainageCondition);
+
+	return feature;	
+   });
 
     results = dojo.map(results, function (result, index) {
       const feature = result.feature;
       const layerName = result.layerName;
       const serviceUrl = taskUrls[index];
-
       feature.attributes.layerName = layerName;
       console.log(feature);
       const template = new InfoTemplate(layerName);
       feature.setInfoTemplate(template);
-
+console.log(feature);
       return feature;
     });
-
+    results = results.concat(featureResults);
     if (results.length === 0) {
       map.infoWindow.clearFeatures();
     } else {
       map.infoWindow.setFeatures(results);
     }
+
     map.infoWindow.show(mapPoint);
 
     return results;
@@ -481,19 +479,19 @@ require([
     event,
     identifyParams,
     identifyTask,
-    featureAttributes
+  //  featureAttributes
   ) {
-    console.log('executeIdentifyTask');
     identifyParams.geometry = event.mapPoint;
     identifyParams.mapExtent = map.extent;
-
-    const deferred = identifyTask.execute(identifyParams);
-    deferred.addCallback(function (response) {
-      // response is an array of identify result objects
+    identifyTask = new IdentifyTask(huc8FeatureURL);
+    const deferred = [];// = identifyTask.execute(identifyParams);
+//    deferred.addCallback(function (response) {
+   identifyTask.execute(identifyParams).then(function(response) {  
+    // response is an array of identify result objects
       // Let's return an array of features.
       return arrayUtils.map(response, function (result) {
         let feature = result.feature;
-        let layerName = 'Drainage conditions';
+        let layerName = 'Drained condition';
         feature.attributes.layerName = layerName;
 
         const condition = {
@@ -520,7 +518,8 @@ require([
         );
 
         feature.setInfoTemplate(drainageCondition);
-
+	console.log("feature\n");
+	deferred = feature;
         return feature;
       });
     });
