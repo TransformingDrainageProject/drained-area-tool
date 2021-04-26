@@ -138,8 +138,10 @@ require([
     const huc8FeatureLayer = new esri.layers.FeatureLayer(huc8FeatureURL, {
 	visible:false,
 	id: 'huc8Layer'
-   });
 
+   });
+  huc8FeatureLayer.setMaxScale(0);
+  huc8FeatureLayer.setMinScale(0);
   const countyFeatureURL =
     'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Counties_Generalized/FeatureServer/0';
 
