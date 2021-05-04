@@ -33,7 +33,9 @@ require([
   'dijit/layout/ContentPane',
   'dijit/TitlePane',
   'dojo/domReady!',
-  'esri/layers/ImageParameters'
+  'esri/layers/ImageParameters',
+  'esri/request',
+  'esri/config'
 ], function (
   parser,
   Popup,
@@ -63,9 +65,12 @@ require([
   InfoTemplate,
   All,
   dom,
-  ImageParameters
+  ImageParameters,
+esriRequest,
+  esriConfig
 ) {
   parser.parse();
+
 
   //Add widgets on the map
   const popup = new Popup(
@@ -121,7 +126,6 @@ require([
   );
 
   geoLocate.startup();
-
   const search = new Search(
     {
       map: map,
@@ -150,7 +154,6 @@ require([
     visible: false,
     id: 'countyLayer',
   });
-
   const featureURL0 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/studyarea/MapServer';
 
@@ -161,7 +164,6 @@ require([
 
   const rasterURL1 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
-
   const operationalLayer1 = new ArcGISDynamicMapServiceLayer(rasterURL1, {
     opacity: 0.6,
     visible: true,
@@ -366,9 +368,7 @@ require([
             responseLayers.feature.push(rep);
           }
         });
-//        identifyTasks = new IdentifyTask(huc8FeatureURL);
         executeIdentifyTask(responseLayers, identifyTasks, mapPoint);
-//	executeIdentifyTask2(event, createIdentifyParams(requiredLayers,event), identifyTasks );
       });
 
     });
@@ -379,14 +379,27 @@ require([
       const queryParams = new Query();
       queryParams.geometry = event.mapPoint;
       queryParams.outFields = ['*'];
-      queryParams.returnGeometry = false;
+      queryParams.returnGeometry = true;
 
       return queryParams;
     });
 
     return queryParamsList;
   }
+  function createIdentifyParamsD(layerPolygon, event) {
+		const identifyParamsD = new IdentifyParameters();
+	identifyParamsD.outFields = ["*"];
+		identifyParamsD.mapExtent = layerPolygon.feature.geometry.getExtent();
+		identifyParamsD.geometry = layerPolygon.feature.geometry;
+		identifyParamsD.geometryType = layerPolygon.geometryType;
+		identifyParamsD.tolerance = 100;
+		identifyParamsD.returnGeometry = true;
+		identifyParamsD.spatialReference = layerPolygon.feature.geometry.spatialReference;
+//identifyParamsD.spatialRelationship = Query.SPATIAL_REL_INTERSECTS;
 
+		return identifyParamsD;
+  }
+		
   function createIdentifyParams(showLayers, event) {
     const identifyParamsList = dojo.map(showLayers, function (layer) {
       const identifyParams = new IdentifyParameters();
@@ -435,17 +448,28 @@ require([
     for (let i = 0; i < featureLayers.length; i++) {
      	featureResults = featureResults.concat(featureLayers[i]);
     }
+console.log(results[1]);
+    const paramsD = createIdentifyParamsD(results[0], event);
+    const identifyTaskD = new IdentifyTask(rasterURL1);
+let countOfFeatures = 0;
+    const promisesD = identifyTaskD.execute(paramsD);
+let finalPromise = Promise.resolve(promisesD);
+var huc8num;
+var countyfips;
+var statefips;
     featureResults = dojo.map(featureResults, function (result, index) {
 	let feature = result.features[0];
 	var layerName;
 	if (result.fields[0].name == 'FID') {
 		layerName = 'Counties';
+		statefips = feature.attributes['STATE_FIPS'];
+		countyfips = feature.attributes['CNTY_FIPS'];
 	}
 	else {
 		layerName = 'HUC8 Watersheds';
+		huc8num = feature.attributes['huc8'];
 	}
 	feature.attributes.layerName = layerName;
-	console.log(feature);
         const drainageCondition = new InfoTemplate(
           layerName,
         );
@@ -453,7 +477,19 @@ require([
 
 	return feature;	
    });
-
+/* code for querying from our server the acres likely drained */
+ esri.config.defaults.io.corsEnabledServers.push("lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py");
+	var queryurl = "https://lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py";
+	var layersRequest = esri.request({
+		url: queryurl,
+		content: {"huc": huc8num, "county": countyfips, "state": statefips},
+		handleAs:"json",
+		callbackParamName:"callback",
+		timeout: 0
+	});
+layersRequest = Promise.resolve(layersRequest).then(function(response, io) {
+	console.log(response);
+});
     results = dojo.map(results, function (result, index) {
       const feature = result.feature;
       const layerName = result.layerName;
@@ -462,7 +498,6 @@ require([
       console.log(feature);
       const template = new InfoTemplate(layerName);
       feature.setInfoTemplate(template);
-console.log(feature);
       return feature;
     });
     results = results.concat(featureResults);
