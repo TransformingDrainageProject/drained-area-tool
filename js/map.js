@@ -479,18 +479,22 @@ var statefips;
    });
 /* code for querying from our server the acres likely drained */
  esri.config.defaults.io.corsEnabledServers.push("lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py");
+
 	var queryurl = "https://lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py";
 	var layersRequest = esri.request({
 		url: queryurl,
 		content: {"huc": huc8num, "county": countyfips, "state": statefips},
 		handleAs:"json",
 		callbackParamName:"callback",
-		timeout: 0
 	});
-layersRequest = Promise.resolve(layersRequest).then(function(response, io) {
-	console.log(response);
+        let responseobj = {};
+
+Promise.resolve(layersRequest).then(function(response) {
+	responseobj = response;
+      createPopups(responseobj, mapPoint);
+      return response;
 });
-    results = dojo.map(results, function (result, index) {
+ /*   results = dojo.map(results, function (result, index) {
       const feature = result.feature;
       const layerName = result.layerName;
       const serviceUrl = taskUrls[index];
@@ -508,10 +512,69 @@ layersRequest = Promise.resolve(layersRequest).then(function(response, io) {
     }
 
     map.infoWindow.show(mapPoint);
-
-    return results;
+*/
+    return featureResults;
   }
+  function createPopups(responseobj,mapPoint) {
+console.log(responseobj);
+	let countydata = responseobj.county;
+	let statedata = responseobj.state;
+	let hucdata = responseobj.huc;
+	var windowFeatures = [];
+	var statecontent = "Acres Likely Drained: " + statedata.ac_likely.toFixed(3) +
+ "<br>Acres Likely or Potentially Drained: " + statedata.ac_likely_pot.toFixed(3) +
+ "<br>Percent of state likely drained: " + statedata.per_st_likely.toFixed(3) +
+ "<br>Percent of state likely or potentially drained: " + statedata.per_st_likely_pot.toFixed(3) +
+ "<br>Percent of Ag land likely to be drained: " + statedata.per_ag_likely.toFixed(3) +
+ "<br>Percent of ag land likely or potentially to be drained: " + statedata.per_st_likely_pot.toFixed(3);
+var state = {
+    getLayer: function () {}, // as long as it returns null, you're good
+    attributes: {}, // this does not influence the content in the popup
+    getInfoTemplate: function () {
+        return { title: "state", content: statecontent, declaredClass: "esri.InfoTemplate" };
+    },
+    getTitle: function () { return this.getInfoTemplate().title; },
+    getContent: function () { return statecontent }
+};
+windowFeatures.push(state);
+        var countycontent = "Acres Likely Drained: " + countydata.ac_likely.toFixed(3) +
+ "<br>Acres Likely or Potentially Drained: " + countydata.ac_likely_pot.toFixed(3) +
+ "<br>Percent of county likely drained: " + countydata.per_st_likely.toFixed(3) +
+ "<br>Percent of county likely or potentially drained: " + countydata.per_st_likely_pot.toFixed(3) +
+ "<br>Percent of Ag land likely to be drained: " + countydata.per_ag_likely.toFixed(3) +
+ "<br>Percent of ag land likely or potentially to be drained: " + countydata.per_st_likely_pot.toFixed(3);
+var county = {
+    getLayer: function () {},
+    attributes: {},
+    getInfoTemplate: function () {
+        return { title: "County", content: "${*}", declaredClass: "esri.InfoTemplate" };
+    },
+    getTitle: function () { return this.getInfoTemplate().title; },
+    getContent: function () { return countycontent }
+};
+windowFeatures.push(county);
+        var huccontent = "Acres Likely Drained: " + hucdata.ac_likely.toFixed(3) +
+ "<br>Acres Likely or Potentially Drained: " + hucdata.ac_likely_pot.toFixed(3) +
+ "<br>Percent of state likely drained: " + hucdata.per_st_likely.toFixed(3) +
+ "<br>Percent of state likely or potentially drained: " + hucdata.per_st_likely_pot.toFixed(3) +
+ "<br>Percent of Ag land likely to be drained: " + hucdata.per_ag_likely.toFixed(3) +
+ "<br>Percent of ag land likely or potentially to be drained: " + hucdata.per_st_likely_pot.toFixed(3);
+var huc = {
+    getLayer: function () {},
+    attributes: {},
+    getInfoTemplate: function () {
+        return { title: "HUC8", content: "${*}", declaredClass: "esri.InfoTemplate" };
+    },
+    getTitle: function () { return this.getInfoTemplate().title; },
+    getContent: function () { return huccontent }
+};
+	windowFeatures.push(huc);
+	map.infoWindow.setFeatures(windowFeatures);
+	map.infoWindow.show(mapPoint);
+return responseobj;
 
+
+}
   function executeIdentifyTask2(
     event,
     identifyParams,
