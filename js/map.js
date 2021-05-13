@@ -6,6 +6,7 @@ require([
   'esri/symbols/SimpleFillSymbol',
   'esri/symbols/SimpleLineSymbol',
   'esri/Color',
+  'esri/geometry/Extent',
   'dojo/dom-construct',
   'esri/map',
   'esri/dijit/BasemapToggle',
@@ -17,6 +18,7 @@ require([
   'esri/layers/ArcGISDynamicMapServiceLayer',
   'esri/layers/ArcGISTiledMapServiceLayer',
   'esri/layers/FeatureLayer',
+  'esri/layers/LabelLayer',
   'esri/dijit/LayerList',
   'esri/dijit/Legend',
   'esri/dijit/Scalebar',
@@ -27,6 +29,8 @@ require([
   'esri/tasks/QueryTask',
   'dojo/_base/array',
   'esri/InfoTemplate',
+  'esri/symbols/TextSymbol',
+  'esri/layers/LabelClass',
   'dojo/promise/all',
   'dojo/dom',
   'dijit/layout/BorderContainer',
@@ -35,13 +39,16 @@ require([
   'dojo/domReady!',
   'esri/layers/ImageParameters',
   'esri/request',
-  'esri/config'
+  'esri/config',
+  'esri/renderers/Renderer',
+  'esri/renderers/SimpleRenderer',
 ], function (
   parser,
   Popup,
   SimpleFillSymbol,
   SimpleLineSymbol,
   Color,
+  Extent,
   domConstruct,
   Map,
   BasemapToggle,
@@ -53,6 +60,7 @@ require([
   ArcGISDynamicMapServiceLayer,
   ArcGISTiledMapServiceLayer,
   FeatureLayer,
+  LabelLayer,
   LayerList,
   Legend,
   Scalebar,
@@ -63,11 +71,15 @@ require([
   QueryTask,
   arrayUtils,
   InfoTemplate,
+  TextSymbol,
+  LabelClass,
   All,
   dom,
   ImageParameters,
 esriRequest,
-  esriConfig
+  esriConfig,
+  Renderer,
+  SimpleRenderer,
 ) {
   parser.parse();
 
@@ -75,8 +87,8 @@ esriRequest,
   //Add widgets on the map
   const popup = new Popup(
     {
-      fillSymbol: new SimpleFillSymbol(
-        SimpleFillSymbol.STYLE_SOLID,
+
+      fillSymbol: new SimpleFillSymbol(SimpleFillSymbol.STYLE_NULL,
         new SimpleLineSymbol(
           SimpleLineSymbol.STYLE_SOLID,
           new Color([255, 0, 0]),
@@ -91,8 +103,10 @@ esriRequest,
   const map = new Map('map', {
     basemap: 'topo',
     center: [-90.048, 43.0],
-    zoom: 9,
+    zoom: 6,
+    showLabels: 'true',
     infoWindow: popup,
+    extent: new Extent(-100.00035920442963,35.99568300000004,-80.51845400000002,49.38435800000008),
   });
 
   const basemapGallery = new BasemapGallery(
@@ -139,21 +153,41 @@ esriRequest,
   const huc8FeatureURL =
     'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
 
-    const huc8FeatureLayer = new esri.layers.FeatureLayer(huc8FeatureURL, {
+    const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
 	visible:false,
-	id: 'huc8Layer'
-
+	id: 'huc8Layer',
+	outFields:["*"],
+	opacity: 0.6
    });
-  huc8FeatureLayer.setMaxScale(0);
+  var huc8symbol = new TextSymbol();
+  var huc8json = {
+  "labelExpressionInfo": {"expression": "$feature.huc8"},
+	"maxScale": 0,
+	"minScale": 5000000,
+ };
+  var huc8label = new LabelClass(huc8json);
+  huc8label.symbol = huc8symbol;
+  huc8FeatureLayer.setLabelingInfo([huc8label]);
+  huc8FeatureLayer.setMaxScale(7);
   huc8FeatureLayer.setMinScale(0);
   const countyFeatureURL =
-    'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Counties_Generalized/FeatureServer/0';
-
+'https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/2';
   const countyFeatureLayer = new FeatureLayer(countyFeatureURL, {
     opacity: 0.6,
     visible: false,
     id: 'countyLayer',
+    outFields:["*"],
   });
+var labelSymbol = new TextSymbol();
+var json = {
+  "maxScale": 0,
+  "minScale": 5000000,
+  "labelExpressionInfo": {"expression": "$feature.NAME"}
+  };
+var labelClass = new LabelClass(json);
+labelClass.symbol = labelSymbol;
+countyFeatureLayer.setLabelingInfo([ labelClass]);
+
   const featureURL0 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/studyarea/MapServer';
 
@@ -205,7 +239,7 @@ esriRequest,
     let layerLegends = [];
 
     for (let i = 0; i < layerInfo.length; i++) {
-      if (layerInfo[i].layer.id !== '4') {
+      if (layerInfo[i].layer.id !== '3') {
         layerLegends.push(layerInfo[i]);
       }
     }
@@ -284,11 +318,11 @@ esriRequest,
           title: 'County',
           visibility: false,
         },
-        {
-          layer: operationalLayer0,
-          id: 'State',
-          visibility: true,
-        },
+//        {
+  //        layer: operationalLayer0,
+    //      id: 'State',
+      //    visibility: true,
+        //},
       ],
       showLegend: false,
       showSubLayers: false,
@@ -463,7 +497,7 @@ var statefips;
     featureResults = dojo.map(featureResults, function (result, index) {
 	let feature = result.features[0];
 	var layerName;
-	if (result.fields[0].name == 'FID') {
+	if (result.fields[1].name == 'NAME') {
 		layerName = 'Counties';
 		statefips = feature.attributes['STATE_FIPS'];
 		countyfips = feature.attributes['FIPS'];
