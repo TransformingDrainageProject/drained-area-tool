@@ -19,6 +19,9 @@ require([
   'esri/layers/ArcGISTiledMapServiceLayer',
   'esri/layers/FeatureLayer',
   'esri/layers/LabelLayer',
+  'esri/layers/WMSLayerInfo',
+  'esri/layers/WMSLayer',
+  'esri/layers/WFSLayer',
   'esri/dijit/LayerList',
   'esri/dijit/Legend',
   'esri/dijit/Scalebar',
@@ -61,6 +64,9 @@ require([
   ArcGISTiledMapServiceLayer,
   FeatureLayer,
   LabelLayer,
+  WMSLayerInfo,
+  WMSLayer,
+  WFSLayer,
   LayerList,
   Legend,
   Scalebar,
@@ -148,9 +154,36 @@ esriRequest,
   );
 
   search.startup();
+ esri.config.defaults.io.corsEnabledServers.push("montana.agriculture.purdue.edu/geoserver");
+//https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=drainedarea%3Ahuc8_w_drainclass&maxFeatures=50&outputFormat=SHAPE-ZIP
+var url =// "https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=drainedarea%3Ahuc8_w_drainclass&maxFeatures=50"
+"https://montana.agriculture.purdue.edu/geoserver/drainedarea/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=drainedarea%3Ahuc8_w_drainclass&maxFeatures=50&outputFormat=GML2&CQL_FILTER=INTERSECTS%28the_geom,%20POINT%20%28#{lng}&20${lat}%2%29";
+var opts = {
+"url": url,
+"version": "1.0.0",
+"name": "huc8layer",
+};
+var huc8FeatureLayer = new WFSLayer();
+huc8FeatureLayer.fromJson(opts);
 
+var layer1 = new WMSLayerInfo({
+  name:'huc8layer',
+  title:'drainedclass:huc8_w_drainclass',
+  queryable:true,
+});
+var resourceInfo={
+  extent: new Extent(-100, 36, -80, 50, {wkid: 4269}),
+  layerInfos: [layer1]
+};
+/*var huc8FeatureLayer = new WMSLayer('https://montana.agriculture.purdue.edu/geoserver/drainedarea/wms?bbox=-130,24,-66,50&Format=image/png&request=GetMap&LAYERS=drainedarea:huc8_w_drainclass',{
+  resourceInfo: resourceInfo,
+	queryable:true,
+  visibleLayers: ['layer1'],
+  id: 'huc8layer'
+});*/
+console.log(huc8FeatureLayer);
   //Add dynamic map layers from Mapserver
-  const huc8FeatureURL =
+/*  const huc8FeatureURL =
     'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
 
     const huc8FeatureLayer = new FeatureLayer(huc8FeatureURL, {
@@ -158,7 +191,7 @@ esriRequest,
 	id: 'huc8Layer',
 	outFields:["*"],
 	opacity: 0.6
-   });
+   });*/
   var huc8symbol = new TextSymbol();
   var huc8json = {
   "labelExpressionInfo": {"expression": "$feature.huc8"},
@@ -169,7 +202,7 @@ esriRequest,
   huc8label.symbol = huc8symbol;
   huc8FeatureLayer.setLabelingInfo([huc8label]);
   huc8FeatureLayer.setMaxScale(7);
-  huc8FeatureLayer.setMinScale(0);
+  huc8FeatureLayer.setMinScale(0); 
   const countyFeatureURL =
 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/2';
   const countyFeatureLayer = new FeatureLayer(countyFeatureURL, {
@@ -386,7 +419,7 @@ countyFeatureLayer.setLabelingInfo([ labelClass]);
       const params = createIdentifyParams(showDynamicLayers, event);
 
       const queries = createQueryParams(showFeatureLayers, event);
-
+console.log(featureLayers);
       const identifyPromises = identifyTasks.map(function (task, index) {
         return task.execute(params[index]);
       });
