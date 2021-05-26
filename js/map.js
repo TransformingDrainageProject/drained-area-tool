@@ -108,7 +108,7 @@ esriRequest,
 
   const map = new Map('map', {
     basemap: 'topo',
-    center: [-90.048, 43.0],
+    center: [-97.048, 43.0],
     zoom: 6,
     showLabels: 'true',
     infoWindow: popup,
