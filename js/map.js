@@ -1,6 +1,13 @@
 'use strict';
 
 require([
+  'dijit/layout/BorderContainer',
+  'dijit/layout/ContentPane',
+  'dijit/TitlePane',
+  'dojo/domReady!',
+]);
+
+require([
   'dojo/_base/array',
   'dojo/dom',
   'dojo/dom-construct',
@@ -21,12 +28,6 @@ require([
   'esri/layers/ArcGISTiledMapServiceLayer',
   'esri/layers/FeatureLayer',
   'esri/layers/WMSLayer',
-  'esri/layers/WFSLayer',
-  'esri/dijit/LayerList',
-  'esri/dijit/Legend',
-  'esri/dijit/Scalebar',
-  'esri/geometry/webMercatorUtils',
-  'esri/tasks/IdentifyTask',
   'esri/symbols/SimpleFillSymbol',
   'esri/symbols/SimpleLineSymbol',
   'esri/map',
@@ -55,12 +56,6 @@ require([
   ArcGISTiledMapServiceLayer,
   FeatureLayer,
   WMSLayer,
-  WFSLayer,
-  LayerList,
-  Legend,
-  Scalebar,
-  webMercatorUtils,
-  IdentifyTask,
   SimpleFillSymbol,
   SimpleLineSymbol,
   Map,
