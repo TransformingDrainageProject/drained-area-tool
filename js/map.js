@@ -25,6 +25,7 @@ require([
   'esri/dijit/LayerList',
   'esri/dijit/Legend',
   'esri/dijit/Scalebar',
+  'esri/SpatialReference',
   'esri/geometry/webMercatorUtils',
   'esri/tasks/IdentifyTask',
   'esri/tasks/IdentifyParameters',
@@ -70,6 +71,7 @@ require([
   LayerList,
   Legend,
   Scalebar,
+  SpatialReference,
   webMercatorUtils,
   IdentifyTask,
   IdentifyParameters,
@@ -194,24 +196,7 @@ require([
   var countyFeatureLayer = new WMSLayer(url, opts3);
   countyFeatureLayer.id = 'countyFeatureLayer';
 
-  const huc8FeatureURL =
-    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
-
-  const huc8QueryLayer = new FeatureLayer(huc8FeatureURL, {
-    visible: false,
-    id: 'huc8Layer',
-    outFields: ['*'],
-    opacity: 0,
-  });
-  const countyFeatureURL =
-    'https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/2';
-  const countyQueryLayer = new FeatureLayer(countyFeatureURL, {
-    opacity: 0,
-    visible: false,
-    id: 'countyLayer',
-    outFields: ['*'],
-  });
-  const querylayers = [huc8QueryLayer, countyQueryLayer];
+  const querylayers = [];
 
   const rasterURL1 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
@@ -353,6 +338,8 @@ require([
     dojo.connect(map, 'onClick', function (event) {
       let identitfyResults = [];
       let mapPoint = event.mapPoint;
+      let screenPoint = event.screenPoint;
+console.log(event);
       map.infoWindow.clearFeatures();
       map.infoWindow.setTitle('Likely drained agricultural land by state');
       map.infoWindow.setContent('Loading...');
@@ -393,7 +380,7 @@ require([
             console.log(rep);
           }
         });
-        executeIdentifyTask(responseLayers, mapPoint);
+        executeIdentifyTask(responseLayers, mapPoint, screenPoint);
       });
     });
   }
@@ -436,7 +423,7 @@ require([
     return identifyParamsList;
   }
 
-  function executeIdentifyTask(response, mapPoint, queries, queryTasks) {
+  function executeIdentifyTask(response, mapPoint, screenPoint, queries, queryTasks) {
     let results = [];
     let taskUrls = [];
     let featureResults = [];
@@ -468,17 +455,16 @@ require([
       return feature;
     });
     /* code for querying from our server the acres likely drained */
-    esri.config.defaults.io.corsEnabledServers.push(
-      'lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py'
-    );
-
-    var queryurl =
-      'https://lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py';
+    var queryurl = "https://montana.agriculture.purdue.edu/geoserver/drainedarea/wms";
     var layersRequest = esri.request({
-      url: queryurl,
-      content: { huc: huc8num, county: countyfips, state: statefips },
-      handleAs: 'json',
-      callbackParamName: 'callback',
+	url: queryurl,
+	content: {SERVICE: 'WMS', VERSION: '1.1.1', REQUEST: 'GetFeatureInfo', 
+          QUERY_LAYERS: 'drainedarea:county_w_drainclass,drainedarea:state_w_drainclass,drainedarea:huc8_w_drainclass',
+	  LAYERS: 'drainedarea:county_w_drainclass,drainedarea:state_w_drainclass,drainedarea:huc8_w_drainclass',
+	  INFO_FORMAT: 'application/json', FEATURE_COUNT: 50, X: screenPoint.x, Y: screenPoint.y, 
+	  SRS: "EPSG:" + 3857, WIDTH: map.width, HEIGHT: map.height, BBOX: map.extent.xmin + ',' + map.extent.ymin + ',' + map.extent.xmax + ',' + map.extent.ymax },
+	handleAs: 'json',
+	callbackParamName: 'callback',
     });
     let responseobj = {};
     Promise.resolve(layersRequest).then(function (response) {
@@ -490,13 +476,26 @@ require([
     return featureResults;
   }
   function createPopups(responseobj, mapPoint) {
-    let countydata = responseobj.results.county;
-    let statedata = responseobj.results.state;
-    let hucdata = responseobj.results.huc;
+console.log(responseobj);
+    let features = responseobj.features;
+console.log(features.length);
+    let size = features.length;
+    var countydata;
+    var statedata;
+    var hucdata;
+    for (var i = 0; i < size; i++) {
+       if (features[i].id.includes("county") && countydata == null) {
+	  countydata = responseobj.features[i].properties;
+       } if (features[i].id.includes("state") && statedata == null) {
+	  statedata = responseobj.features[i].properties;
+       } if (features[i].id.includes("huc8") && hucdata == null) {
+          hucdata = responseobj.features[i].properties;
+       }
+    }
     var windowFeatures = [];
     console.log(responseobj);
     /* check for response error */
-    if (responseobj.results.error) {
+    if (responseobj.error) {
       map.infoWindow.clearFeatures();
       map.infoWindow.setTitle('Error');
       map.infoWindow.setContent(responseobj.results.error);
@@ -505,15 +504,15 @@ require([
       /* state popup */
       var statecontent =
         '<b>' +
-        statedata.state +
+        statedata.NAME +
         '</b><br> Area in acres: <br> &emsp;Acres Likely Drained: ' +
-        statedata.ac_likely.toFixed(2) +
+        statedata.LIKELY_ARE.toFixed(2) +
         '<br>&emsp;Acres Likely or Potentially Drained: ' +
-        statedata.ac_likely_pot.toFixed(2) +
+        statedata.POTENTIALL.toFixed(2) +
         '<br>Percent of state: <br> &emsp;Percent of state likely drained: ' +
-        statedata.per_st_likely.toFixed(2) +
+        statedata.LIKELY_PER.toFixed(2) +
         '<br>&emsp;Percent of state likely or potentially drained: ' +
-        statedata.per_st_likely_pot.toFixed(2); // +
+        statedata.POTENTIA_1.toFixed(2); // +
       // "<br>&emsp;Percent of ag land: <br> Percent of Ag land likely to be drained: " + statedata.per_ag_likely.toFixed(2) +
       // "<br>P&emsp;ercent of ag land likely or potentially to be drained: " + statedata.per_st_likely_pot.toFixed(2);
       var state = {
@@ -538,15 +537,15 @@ require([
       /* county popup */
       var countycontent =
         '<b>' +
-        countydata.county +
+        countydata.NAME +
         '</b><br>Area in acres:<br> &emsp;Acres Likely Drained: ' +
-        countydata.ac_likely.toFixed(2) +
+        countydata.LIKELY_ARE.toFixed(2) +
         '<br> &emsp;Acres Likely or Potentially Drained: ' +
-        countydata.ac_likely_pot.toFixed(2) +
+        countydata.POTENTIALL.toFixed(2) +
         '<br>Percent of county: <br> &emsp;Percent of county likely drained: ' +
-        countydata.per_co_likely.toFixed(2) +
+        countydata.LIKELY_PER.toFixed(2) +
         '<br>&emsp;Percent of county likely or potentially drained: ' +
-        countydata.per_co_likely_pot.toFixed(2); // +
+        countydata.POTENTIA_1.toFixed(2); // +
       // "<br>&emsp; Percent of ag land: <br> Percent of Ag land likely to be drained: " + countydata.per_ag_likely.toFixed(2) +
       // "<br>&emsp; Percent of ag land likely or potentially to be drained: " + countydata.per_st_likely_pot.toFixed(2);
       var county = {
@@ -571,17 +570,17 @@ require([
       /* huc8 popup */
       var huccontent =
         '<b>' +
-        hucdata.huc8_name +
+        hucdata.name +
         ' ' +
-        hucdata.huc8_no +
+        hucdata.huc8 +
         '</b><br> Area in acres: <br> &emsp;Acres Likely Drained: ' +
-        hucdata.ac_likely.toFixed(2) +
+        hucdata.LIKELY_ARE.toFixed(2) +
         '<br>&emsp;Acres Likely or Potentially Drained: ' +
-        hucdata.ac_likely_pot.toFixed(2) +
+        hucdata.POTENTIALL.toFixed(2) +
         '<br>Percent of watershed: <br>&emsp;Percent of watershed likely drained: ' +
-        hucdata.per_huc8_likely.toFixed(2) +
+        hucdata.LIKELY_PER.toFixed(2) +
         '<br>&emsp;Percent of watershed likely or potentially drained: ' +
-        hucdata.per_huc8_likely_pot.toFixed(2); //+
+        hucdata.POTENTIA_1.toFixed(2); //+
       // "<br>&emsp;Percent of ag land: <br> Percent of Ag land likely to be drained: " + hucdata.per_ag_likely.toFixed(2) +
       // "<br>&emsp;Percent of ag land likely or potentially to be drained: " + hucdata.per_st_likely_pot.toFixed(2);
       var huc = {
