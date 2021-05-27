@@ -13,56 +13,60 @@ require([
   'dojo/dom-construct',
   'dojo/parser',
   'esri/Color',
-  'esri/dijit/BasemapGallery',
-  'esri/dijit/HomeButton',
-  'esri/dijit/LayerList',
-  'esri/dijit/Legend',
-  'esri/dijit/LocateButton',
-  'esri/dijit/Popup',
-  'esri/dijit/Scalebar',
-  'esri/dijit/Search',
+  'esri/config',
   'esri/geometry/Extent',
-  'esri/geometry/webMercatorUtils',
-  'esri/InfoTemplate',
-  'esri/layers/ArcGISDynamicMapServiceLayer',
-  'esri/layers/ArcGISTiledMapServiceLayer',
+  'esri/geometry/support/webMercatorUtils',
+  'esri/PopupTemplate',
+  'esri/layers/MapImageLayer',
+  'esri/layers/TileLayer',
   'esri/layers/FeatureLayer',
   'esri/layers/WMSLayer',
   'esri/symbols/SimpleFillSymbol',
   'esri/symbols/SimpleLineSymbol',
-  'esri/map',
-  'esri/tasks/IdentifyParameters',
+  'esri/Map',
   'esri/tasks/IdentifyTask',
-  'esri/tasks/query',
   'esri/tasks/QueryTask',
+  'esri/tasks/support/IdentifyParameters',
+  'esri/tasks/support/Query',
+  'esri/views/MapView',
+  'esri/widgets/BasemapGallery',
+  'esri/widgets/Home',
+  'esri/widgets/LayerList',
+  'esri/widgets/Legend',
+  'esri/widgets/Locate',
+  'esri/widgets/Popup',
+  'esri/widgets/ScaleBar',
+  'esri/widgets/Search',
 ], function (
   arrayUtils,
   dom,
   domConstruct,
   parser,
   Color,
-  BasemapGallery,
-  HomeButton,
-  LayerList,
-  Legend,
-  LocateButton,
-  Popup,
-  Scalebar,
-  Search,
+  esriConfig,
   Extent,
   webMercatorUtils,
-  InfoTemplate,
-  ArcGISDynamicMapServiceLayer,
-  ArcGISTiledMapServiceLayer,
+  PopupTemplate,
+  MapImageLayer,
+  TileLayer,
   FeatureLayer,
   WMSLayer,
   SimpleFillSymbol,
   SimpleLineSymbol,
   Map,
-  IdentifyParameters,
   IdentifyTask,
+  QueryTask,
+  IdentifyParameters,
   Query,
-  QueryTask
+  MapView,
+  BasemapGallery,
+  Home,
+  LayerList,
+  Legend,
+  Locate,
+  Popup,
+  ScaleBar,
+  Search
 ) {
   parser.parse();
 
@@ -82,62 +86,44 @@ require([
     domConstruct.create('div')
   );
 
-  const map = new Map('map', {
-    basemap: 'topo',
-    center: [-97.048, 43.0],
-    zoom: 6,
-    showLabels: 'true',
-    infoWindow: popup,
-    extent: new Extent(
-      -100.00035920442963,
-      35.99568300000004,
-      -80.51845400000002,
-      49.38435800000008
-    ),
+  const view = new MapView({
+    container: 'map',
+    map: new Map({
+      basemap: 'topo',
+      center: [-97.048, 43.0],
+      zoom: 6,
+      showLabels: 'true',
+      infoWindow: popup,
+      extent: new Extent(
+        -100.00035920442963,
+        35.99568300000004,
+        -80.51845400000002,
+        49.38435800000008
+      ),
+    }),
   });
 
-  const basemapGallery = new BasemapGallery(
-    {
-      showArcGISBasemaps: true,
-      map: map,
-    },
-    'basemapGallery'
-  );
-
-  basemapGallery.startup();
+  const basemapGallery = new BasemapGallery({
+    view: view,
+  });
 
   basemapGallery.on('error', function (msg) {
     console.log('basemap gallery error:  ', msg);
   });
 
-  const home = new HomeButton(
-    {
-      map: map,
-    },
-    'HomeButton'
-  );
+  const home = new Home({ view: view });
+  view.ui.add(home, 'top-left');
 
-  home.startup();
+  const geoLocate = new Locate({ view: view });
+  view.ui.add(geoLocate, 'top-left');
 
-  const geoLocate = new LocateButton(
-    {
-      map: map,
-    },
-    'LocateButton'
-  );
+  const search = new Search({ view: view });
+  view.ui.add(search, 'top-left');
 
-  geoLocate.startup();
-  const search = new Search(
-    {
-      map: map,
-    },
-    dom.byId('search')
-  );
-
-  search.startup();
-  esri.config.defaults.io.corsEnabledServers.push(
+  esriConfig.defaults.io.corsEnabledServers.push(
     'https://montana.agriculture.purdue.edu/geoserver'
   );
+
   var url = 'https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows';
   const opts = {
     visible: false,
@@ -192,7 +178,7 @@ require([
 
   const rasterURL1 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
-  const operationalLayer1 = new ArcGISDynamicMapServiceLayer(rasterURL1, {
+  const operationalLayer1 = new MapImageLayer(rasterURL1, {
     opacity: 0.6,
     visible: true,
     id: 'drainageExtentLayer',
@@ -201,7 +187,7 @@ require([
   const rasterURL2 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_CONUS_Drainage_Classes/MapServer';
 
-  const operationalLayer2 = new ArcGISTiledMapServiceLayer(rasterURL2, {
+  const operationalLayer2 = new TileLayer(rasterURL2, {
     opacity: 0.6,
     visible: false,
     id: 'drainageClassLayer',
@@ -210,7 +196,7 @@ require([
   const rasterURL3 =
     'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_Hillshade/MapServer';
 
-  const operationalLayer3 = new ArcGISTiledMapServiceLayer(rasterURL3, {
+  const operationalLayer3 = new TileLayer(rasterURL3, {
     opacity: 0.3,
     visible: true,
     id: '3',
@@ -321,7 +307,7 @@ require([
   );
   layerList2.startup();
 
-  const scalebar = new Scalebar({
+  const scalebar = new ScaleBar({
     map: map,
     scalebarUnit: 'dual',
   });
@@ -439,8 +425,8 @@ require([
         huc8num = feature.attributes['huc8'];
       }
       feature.attributes.layerName = layerName;
-      const drainageCondition = new InfoTemplate(layerName);
-      feature.setInfoTemplate(drainageCondition);
+      const drainageCondition = new PopupTemplate(layerName);
+      feature.setPopupTemplate(drainageCondition);
 
       return feature;
     });
@@ -496,15 +482,15 @@ require([
       var state = {
         getLayer: function () {}, // as long as it returns null, you're good
         attributes: {}, // this does not influence the content in the popup
-        getInfoTemplate: function () {
+        getPopupTemplate: function () {
           return {
             title: 'Likely drained agricultural lands by state',
             content: statecontent,
-            declaredClass: 'esri.InfoTemplate',
+            declaredClass: 'esri.PopupTemplate',
           };
         },
         getTitle: function () {
-          return this.getInfoTemplate().title;
+          return this.getPopupTemplate().title;
         },
         getContent: function () {
           return statecontent;
@@ -529,15 +515,15 @@ require([
       var county = {
         getLayer: function () {},
         attributes: {},
-        getInfoTemplate: function () {
+        getPopupTemplate: function () {
           return {
             title: 'Likely drained agricultural lands by county',
             content: '${*}',
-            declaredClass: 'esri.InfoTemplate',
+            declaredClass: 'esri.PopupTemplate',
           };
         },
         getTitle: function () {
-          return this.getInfoTemplate().title;
+          return this.getPopupTemplate().title;
         },
         getContent: function () {
           return countycontent;
@@ -564,15 +550,15 @@ require([
       var huc = {
         getLayer: function () {},
         attributes: {},
-        getInfoTemplate: function () {
+        getPopupTemplate: function () {
           return {
             title: 'Likely drained agricultural lands by watershed',
             content: '${*}',
-            declaredClass: 'esri.InfoTemplate',
+            declaredClass: 'esri.PopupTemplate',
           };
         },
         getTitle: function () {
-          return this.getInfoTemplate().title;
+          return this.getPopupTemplate().title;
         },
         getContent: function () {
           return huccontent;
@@ -616,7 +602,7 @@ require([
           2: 'Poorly - Very poorly drained',
         };
 
-        const drainageCondition = new InfoTemplate(
+        const drainageCondition = new PopupTemplate(
           layerName,
           condition[feature.attributes['Pixel Value']] +
             '<br/><br/>Natural drainage class: ' +
@@ -627,7 +613,7 @@ require([
             featureAttributes['HUC8']
         );
 
-        feature.setInfoTemplate(drainageCondition);
+        feature.setPopupTemplate(drainageCondition);
         console.log('feature\n');
         deferred = feature;
         return feature;
