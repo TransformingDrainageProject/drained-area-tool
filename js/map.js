@@ -13,7 +13,6 @@ require([
   'dojo/dom-construct',
   'dojo/parser',
   'esri/Color',
-  'esri/config',
   'esri/geometry/Extent',
   'esri/geometry/support/webMercatorUtils',
   'esri/PopupTemplate',
@@ -30,6 +29,7 @@ require([
   'esri/tasks/support/Query',
   'esri/views/MapView',
   'esri/widgets/BasemapGallery',
+  'esri/widgets/Expand',
   'esri/widgets/Home',
   'esri/widgets/LayerList',
   'esri/widgets/Legend',
@@ -43,7 +43,6 @@ require([
   domConstruct,
   parser,
   Color,
-  esriConfig,
   Extent,
   webMercatorUtils,
   PopupTemplate,
@@ -60,6 +59,7 @@ require([
   Query,
   MapView,
   BasemapGallery,
+  Expand,
   Home,
   LayerList,
   Legend,
@@ -86,76 +86,89 @@ require([
     domConstruct.create('div')
   );
 
-  const view = new MapView({
-    container: 'map',
-    map: new Map({
-      basemap: 'topo',
-      center: [-97.048, 43.0],
-      zoom: 6,
-      showLabels: 'true',
-      infoWindow: popup,
-      extent: new Extent(
-        -100.00035920442963,
-        35.99568300000004,
-        -80.51845400000002,
-        49.38435800000008
-      ),
-    }),
+  const map = new Map({
+    basemap: 'topo',
   });
+
+  const view = new MapView({
+    container: 'viewDiv',
+    map: map,
+    zoom: 6,
+    center: [-97.048, 43.0],
+    extent: new Extent(
+      -100.00035920442963,
+      35.99568300000004,
+      -80.51845400000002,
+      49.38435800000008
+    ),
+  });
+
+  const search = new Search({ view: view });
+  view.ui.add(search, { position: 'top-right' });
 
   const basemapGallery = new BasemapGallery({
     view: view,
+    container: document.createElement('div'),
   });
 
-  basemapGallery.on('error', function (msg) {
-    console.log('basemap gallery error:  ', msg);
+  // Create an Expand instance and set the content
+  // property to the DOM node of the basemap gallery widget
+  // Use an Esri icon font to represent the content inside
+  // of the Expand widget
+  const bgExpand = new Expand({
+    view: view,
+    content: basemapGallery,
   });
+  // close the expand whenver a basemap is selected
+  basemapGallery.watch('activeBasemap', function () {
+    const mobileSize =
+      view.heightBreakpoint === 'xsmall' || view.widthBreakpoint === 'xsmall';
 
-  const home = new Home({ view: view });
-  view.ui.add(home, 'top-left');
+    if (mobileSize) {
+      bgExpand.collapse();
+    }
+  });
+  view.ui.add(bgExpand, 'top-right');
 
-  const geoLocate = new Locate({ view: view });
-  view.ui.add(geoLocate, 'top-left');
+  const homeBtn = new Home({ view: view });
+  view.ui.add(homeBtn, { position: 'top-left' });
 
-  const search = new Search({ view: view });
-  view.ui.add(search, 'top-left');
+  const locateBtn = new Locate({ view: view });
+  view.ui.add(locateBtn, { position: 'top-left' });
 
-  esriConfig.defaults.io.corsEnabledServers.push(
-    'https://montana.agriculture.purdue.edu/geoserver'
-  );
+  const scaleBar = new ScaleBar({ view: view, unit: 'dual' });
+  view.ui.add(scaleBar, { position: 'bottom-left' });
 
-  var url = 'https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows';
-  const opts = {
-    visible: false,
-    format: 'png',
-    version: '1.3.0',
-    visibleLayers: ['drainedarea:huc8_w_drainclass'],
-    featureInfoFormat: 'application/json',
-    getFeatureInfoUrl:
-      'https://montana.agriculture.purdue.edu/geoserver/drainedarea/WMS/?service=WMS&version=1.3.0&info_format=application/json',
-  };
-  var huc8FeatureLayer = new WMSLayer(url, opts);
-  huc8FeatureLayer.id = 'huc8layer';
-  console.log(huc8FeatureLayer);
-  //Add dynamic map layers from Mapserver
+  // var url = 'https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows';
+  // const opts = {
+  //   visible: false,
+  //   format: 'png',
+  //   version: '1.3.0',
+  //   visibleLayers: ['drainedarea:huc8_w_drainclass'],
+  //   featureInfoFormat: 'application/json',
+  //   getFeatureInfoUrl:
+  //     'https://montana.agriculture.purdue.edu/geoserver/drainedarea/WMS/?service=WMS&version=1.3.0&info_format=application/json',
+  // };
+  // var huc8FeatureLayer = new WMSLayer(url, opts);
+  // huc8FeatureLayer.id = 'huc8layer';
 
-  const opts2 = {
-    format: 'png',
-    version: '1.3.0',
-    visibleLayers: ['drainedarea:state_w_drainclass'],
-  };
-  var stateLayer = new WMSLayer(url, opts2);
-  stateLayer.id = 'stateLayer';
-  console.log(stateLayer);
+  // //Add dynamic map layers from Mapserver
+  // const opts2 = {
+  //   format: 'png',
+  //   version: '1.3.0',
+  //   visibleLayers: ['drainedarea:state_w_drainclass'],
+  // };
+  // var stateLayer = new WMSLayer(url, opts2);
+  // stateLayer.id = 'stateLayer';
 
-  const opts3 = {
-    format: 'png',
-    version: '1.3.0',
-    visibleLayers: ['drainedarea:county_w_drainclass'],
-    visible: false,
-  };
-  var countyFeatureLayer = new WMSLayer(url, opts3);
-  countyFeatureLayer.id = 'countyFeatureLayer';
+  // const opts3 = {
+  //   format: 'png',
+  //   version: '1.3.0',
+  //   visibleLayers: ['drainedarea:county_w_drainclass'],
+  //   visible: false,
+  // };
+  // var countyFeatureLayer = new WMSLayer(url, opts3);
+  // countyFeatureLayer.id = 'countyFeatureLayer';
 
   const huc8FeatureURL =
     'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
@@ -202,115 +215,97 @@ require([
     id: '3',
   });
 
-  map.addLayers([
-    stateLayer,
-    operationalLayer1,
-    operationalLayer2,
-    operationalLayer3,
-    huc8FeatureLayer,
-    countyFeatureLayer,
-  ]);
+  // map.addMany([operationalLayer1, operationalLayer2, operationalLayer3]);
 
-  map.on('layers-add-result', function (evt) {
-    const layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
-      return { layer: layer.layer, title: ' ' };
-    });
+  // map.on('layers-add-result', function (evt) {
+  //   const layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
+  //     return { layer: layer.layer, title: ' ' };
+  //   });
 
-    let layerLegends = [];
+  //   let layerLegends = [];
 
-    for (let i = 0; i < layerInfo.length; i++) {
-      if (layerInfo[i].layer.id !== '3') {
-        layerLegends.push(layerInfo[i]);
-      }
-    }
+  //   for (let i = 0; i < layerInfo.length; i++) {
+  //     if (layerInfo[i].layer.id !== '3') {
+  //       layerLegends.push(layerInfo[i]);
+  //     }
+  //   }
 
-    if (layerLegends.length > 0) {
-      const legendDijit = new Legend(
-        {
-          map: map,
+  //   if (layerLegends.length > 0) {
+  //     const legendDijit = new Legend(
+  //       {
+  //         map: map,
 
-          layerInfos: layerLegends.reverse(),
-        },
-        'legendDiv'
-      );
-      legendDijit.startup();
-    }
-  });
+  //         layerInfos: layerLegends.reverse(),
+  //       },
+  //       'legendDiv'
+  //     );
+  //     legendDijit.startup();
+  //   }
+  // });
 
   //Map event handling
-  dojo.connect(map, 'onLoad', mapReady);
-  dojo.connect(map, 'onMouseMove', showCoordinates);
+  // dojo.connect(map, 'onLoad', mapReady);
+  // dojo.connect(map, 'onMouseMove', showCoordinates);
 
-  const layerList = new LayerList(
-    {
-      map: map,
-      layers: [
-        {
-          layer: operationalLayer3,
-          id: 'Hillshade',
-          visibility: true,
-        },
-      ],
-      showLegend: false,
-      showSubLayers: false,
-      showOpacitySlider: false,
-    },
-    'layerList'
-  );
-  layerList.startup();
+  // const layerList = new LayerList({
+  //   view: view,
+  //   layers: [
+  //     {
+  //       layer: operationalLayer3,
+  //       id: 'Hillshade',
+  //       visibility: true,
+  //     },
+  //   ],
+  //   showLegend: false,
+  //   showSubLayers: false,
+  //   showOpacitySlider: false,
+  // });
+  // view.ui.add(layerList, { position: 'top-right' });
 
-  const layerList1 = new LayerList(
-    {
-      map: map,
-      layers: [
-        {
-          layer: operationalLayer2,
-          id: 'Natural Drainage Class',
-          visibility: false,
-        },
-        {
-          layer: operationalLayer1,
-          id: 'Agriculture Drainage Likely Extent',
-          visibility: true,
-        },
-      ],
-      showLegend: false,
-      showSubLayers: false,
-      showOpacitySlider: false,
-    },
-    'layerList1'
-  );
-  layerList1.startup();
+  // const layerList1 = new LayerList({
+  //   view: view,
+  //   layers: [
+  //     {
+  //       layer: operationalLayer2,
+  //       id: 'Natural Drainage Class',
+  //       visibility: false,
+  //     },
+  //     {
+  //       layer: operationalLayer1,
+  //       id: 'Agriculture Drainage Likely Extent',
+  //       visibility: true,
+  //     },
+  //   ],
+  //   showLegend: false,
+  //   showSubLayers: false,
+  //   showOpacitySlider: false,
+  // });
+  // view.ui.add(layerList1, { position: 'top-right' });
 
-  const layerList2 = new LayerList(
-    {
-      map: map,
-      layers: [
-        {
-          layer: huc8FeatureLayer,
-          id: 'HUC8 Watershed',
-          title: 'HUC8 Watershed',
-          visibility: false,
-        },
-        {
-          layer: countyFeatureLayer,
-          id: 'County',
-          title: 'County',
-          visibility: false,
-        },
-      ],
-      showLegend: false,
-      showSubLayers: false,
-      showOpacitySlider: false,
-    },
-    'layerList2'
-  );
-  layerList2.startup();
-
-  const scalebar = new ScaleBar({
-    map: map,
-    scalebarUnit: 'dual',
-  });
+  // const layerList2 = new LayerList(
+  //   {
+  //     map: map,
+  //     layers: [
+  //       {
+  //         layer: huc8FeatureLayer,
+  //         id: 'HUC8 Watershed',
+  //         title: 'HUC8 Watershed',
+  //         visibility: false,
+  //       },
+  //       {
+  //         layer: countyFeatureLayer,
+  //         id: 'County',
+  //         title: 'County',
+  //         visibility: false,
+  //       },
+  //     ],
+  //     showLegend: false,
+  //     showSubLayers: false,
+  //     showOpacitySlider: false,
+  //   },
+  //   'layerList2'
+  // );
+  // view.ui.add(layerList2, { position: 'top-right' });
 
   function mapReady(map) {
     dojo.connect(map, 'onClick', function (event) {

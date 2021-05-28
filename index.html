@@ -2,65 +2,26 @@
 <html lang="en-us">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="This map identifies the potential suitability for subirrigation of land in the Midwestern United States." />
-    
-    <link rel="stylesheet" href="https://js.arcgis.com/4.19/esri/themes/light/main.css" />
+    <title>Agricultural Drainage Likely Extent</title>
+
     <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="https://js.arcgis.com/4.19/esri/themes/light/main.css" />
 
     <script src="https://js.arcgis.com/4.19/"></script>
     <script src="./js/map.js"></script>
-    
-    <title>Agricultural Drainage Likely Extent</title>
   </head>
-  <body class="claro">
-    <div
-      class="container"
-      data-dojo-type="dijit/layout/BorderContainer"
-      data-dojo-props="design:'headline', gutters:false"
-    >
-      <div
-        id="layerListPane"
-        data-dojo-type="dijit/layout/ContentPane"
-        data-dojo-props="region:'right'"
-      >
-        <div id="layerList"></div>
-        <div id="layerList2"></div>
-        <div id="layerList1"></div>
-        <div id="legendDiv"></div>
-        <div>
+  <body>
+    <div class="container" >
+      <div id="viewDiv"></div>
+      <div id="helpDiv">
           <strong>
             Was this tool helpful? Please complete
             <a href="https://forms.gle/6kf2zqAPFqQ16i7d9">our survey</a>
             .
           </strong>
-        </div>
-      </div>
-
-      <div
-        id="map"
-        data-dojo-type="dijit/layout/ContentPane"
-        data-dojo-props="region:'center'"
-      >
-        <div id="search"></div>
-        <div id="HomeButton"></div>
-        <div id="LocateButton"></div>
-        <span id="info"></span>
-
-        <div style="position: absolute; right: 20px; top: 10px; z-index: 999;">
-          <div
-            data-dojo-type="dijit.TitlePane"
-            data-dojo-props="title:'Switch Basemap', open:false"
-          >
-            <div
-              data-dojo-type="dijit.layout.ContentPane"
-              style="width: 380px; height: 280px; overflow: auto;"
-            >
-              <div id="basemapGallery"></div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </body>
