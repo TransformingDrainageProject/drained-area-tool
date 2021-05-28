@@ -359,6 +359,7 @@ require([
     var countydata;
     var statedata;
     var hucdata;
+    /* for loop through each feature that goes through each feature obtained and sets county, state and huc8 data to the first of the same feature that pops up */
     for (var i = 0; i < size; i++) {
        if (features[i].id.includes("county") && countydata == null) {
 	  countydata = responseobj.features[i].properties;
@@ -389,7 +390,7 @@ require([
         '<br>&emsp;Percent of state likely or potentially drained: ' +
         statedata.POTENTIA_1.toFixed(2); // +
       // "<br>&emsp;Percent of ag land: <br> Percent of Ag land likely to be drained: " + statedata.per_ag_likely.toFixed(2) +
-      // "<br>P&emsp;ercent of ag land likely or potentially to be drained: " + statedata.per_st_likely_pot.toFixed(2);
+      // "<br>&emsp;Percent of ag land likely or potentially to be drained: " + statedata.per_st_likely_pot.toFixed(2);
       var state = {
         getLayer: function () {}, // as long as it returns null, you're good
         attributes: {}, // this does not influence the content in the popup
