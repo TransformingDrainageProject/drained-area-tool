@@ -150,7 +150,6 @@ require([
   };
   var huc8FeatureLayer = new WMSLayer(url, opts);
   huc8FeatureLayer.id = 'huc8layer';
-  console.log(huc8FeatureLayer);
   //Add dynamic map layers from Mapserver
 
   const opts2 = {
@@ -160,7 +159,6 @@ require([
   };
   var stateLayer = new WMSLayer(url, opts2);
   stateLayer.id = 'stateLayer';
-  console.log(stateLayer);
 
   const opts3 = {
     format: 'png',
@@ -314,7 +312,6 @@ require([
       let identitfyResults = [];
       let mapPoint = event.mapPoint;
       let screenPoint = event.screenPoint;
-console.log(event);
       map.infoWindow.clearFeatures();
       map.infoWindow.setTitle('Likely drained agricultural land by state');
       map.infoWindow.setContent('Loading...');
@@ -329,106 +326,12 @@ console.log(event);
 
       // Create array of dynamic nad feature layers' ids
 
-      const featureLayers = dojo.map(map.graphicsLayerIds, function (layerId) {
-        return map.getLayer(layerId);
+        executeIdentifyTask(mapPoint, screenPoint);
       });
-      // Filter layers to only layers that need identify operation (e.g. visible)
-      const showFeatureLayers = dojo.filter(querylayers, function (layer) {
-        return layer;
-      });
-      // Create array of Query tasks for each feature layer
-      const queryTasks = dojo.map(showFeatureLayers, function (layer) {
-        return new QueryTask(layer.url);
-      });
-      const queries = createQueryParams(showFeatureLayers, event);
-      const queryPromises = queryTasks.map(function (task, index) {
-        return task.execute(queries[index]);
-      });
-      const promises = queryPromises;
-      Promise.all(promises).then(function (response) {
-        let responseLayers = { dynamic: [], feature: [] };
-        response.forEach(function (rep) {
-          if (Array.isArray(rep)) {
-            responseLayers.dynamic.push(rep);
-          } else {
-            responseLayers.feature.push(rep);
-            console.log(rep);
-          }
-        });
-        executeIdentifyTask(responseLayers, mapPoint, screenPoint);
-      });
-    });
   }
 
-  function createQueryParams(showLayers, event) {
-    const queryParamsList = dojo.map(showLayers, function (layer) {
-      const queryParams = new Query();
-      queryParams.geometry = event.mapPoint;
-      queryParams.outFields = ['*'];
-      queryParams.returnGeometry = true;
 
-      return queryParams;
-    });
-
-    return queryParamsList;
-  }
-
-  function createIdentifyParams(showLayers, event) {
-    const identifyParamsList = dojo.map(showLayers, function (layer) {
-      const identifyParams = new IdentifyParameters();
-      identifyParams.width = map.width;
-      identifyParams.height = map.height;
-      identifyParams.geometry = event.mapPoint;
-      identifyParams.mapExtent = map.extent;
-      identifyParams.tolerance = 3;
-      identifyParams.returnGeometry = true;
-
-      // Map service may have multiple layers, collect those here
-      const subLayers = dojo.map(layer.layerInfos, function (subLayer) {
-        if (subLayer.subLayerIds) {
-          return subLayer.subLayerIds;
-        } else {
-          return subLayer.id;
-        }
-      });
-      identifyParams.layerIds = subLayers;
-      return identifyParams;
-    });
-
-    return identifyParamsList;
-  }
-
-  function executeIdentifyTask(response, mapPoint, screenPoint, queries, queryTasks) {
-    let results = [];
-    let taskUrls = [];
-    let featureResults = [];
-    console.log(response);
-    const featureLayers = dojo.filter(response.feature, function (layer) {
-      return layer;
-    });
-    for (let i = 0; i < featureLayers.length; i++) {
-      featureResults = featureResults.concat(featureLayers[i]);
-    }
-    var huc8num;
-    var countyfips;
-    var statefips;
-    featureResults = dojo.map(featureResults, function (result, index) {
-      let feature = result.features[0];
-      var layerName;
-      if (result.fields[1].name == 'NAME') {
-        layerName = 'Counties';
-        statefips = feature.attributes['STATE_FIPS'];
-        countyfips = feature.attributes['FIPS'];
-      } else {
-        layerName = 'HUC8 Watersheds';
-        huc8num = feature.attributes['huc8'];
-      }
-      feature.attributes.layerName = layerName;
-      const drainageCondition = new InfoTemplate(layerName);
-      feature.setInfoTemplate(drainageCondition);
-
-      return feature;
-    });
+  function executeIdentifyTask(mapPoint, screenPoint) {
     /* code for querying from our server the acres likely drained */
     var queryurl = "https://montana.agriculture.purdue.edu/geoserver/drainedarea/wms";
     var layersRequest = esri.request({
@@ -448,12 +351,10 @@ console.log(event);
       return response;
     });
 
-    return featureResults;
+    return responseobj;
   }
   function createPopups(responseobj, mapPoint) {
-console.log(responseobj);
     let features = responseobj.features;
-console.log(features.length);
     let size = features.length;
     var countydata;
     var statedata;
@@ -468,7 +369,6 @@ console.log(features.length);
        }
     }
     var windowFeatures = [];
-    console.log(responseobj);
     /* check for response error */
     if (responseobj.error) {
       map.infoWindow.clearFeatures();
@@ -581,63 +481,6 @@ console.log(features.length);
       map.infoWindow.show(mapPoint);
     }
     return responseobj;
-  }
-  function executeIdentifyTask2(
-    event,
-    identifyParams,
-    identifyTask
-    //  featureAttributes
-  ) {
-    identifyParams.geometry = event.mapPoint;
-    identifyParams.mapExtent = map.extent;
-    identifyTask = new IdentifyTask(huc8FeatureURL);
-    const deferred = []; // = identifyTask.execute(identifyParams);
-    //    deferred.addCallback(function (response) {
-    identifyTask.execute(identifyParams).then(function (response) {
-      // response is an array of identify result objects
-      // Let's return an array of features.
-      return arrayUtils.map(response, function (result) {
-        let feature = result.feature;
-        let layerName = 'Drained condition';
-        feature.attributes.layerName = layerName;
-
-        const condition = {
-          0: 'Unlikely to be drained',
-          1: 'Potentially drained',
-          2: 'Likely to be drained',
-        };
-
-        const naturalClass = {
-          0: 'Moderately well - Excessively drained',
-          1: 'Somewhat poorly drained',
-          2: 'Poorly - Very poorly drained',
-        };
-
-        const drainageCondition = new InfoTemplate(
-          layerName,
-          condition[feature.attributes['Pixel Value']] +
-            '<br/><br/>Natural drainage class: ' +
-            naturalClass[feature.attributes['Pixel Value']] +
-            '<br/><br/>Area (ac): ' +
-            featureAttributes['AREAACRES'] +
-            '<br/><br/>HUC8: ' +
-            featureAttributes['HUC8']
-        );
-
-        feature.setInfoTemplate(drainageCondition);
-        console.log('feature\n');
-        deferred = feature;
-        return feature;
-      });
-    });
-
-    // InfoWindow expects an array of features from each deferred
-    // object that you pass. If the response from the task execution
-    // above is not an array of features, then you need to add a callback
-    // like the one above to post-process the response and return an
-    // array of features.
-    map.infoWindow.setFeatures([deferred]);
-    map.infoWindow.show(event.mapPoint);
   }
 
   function showCoordinates(evt) {
