@@ -1,91 +1,39 @@
 'use strict';
 
 require([
-  'dijit/layout/BorderContainer',
-  'dijit/layout/ContentPane',
-  'dijit/TitlePane',
-  'dojo/domReady!',
-]);
-
-require([
-  'dojo/_base/array',
-  'dojo/dom',
-  'dojo/dom-construct',
-  'dojo/parser',
-  'esri/Color',
   'esri/geometry/Extent',
-  'esri/geometry/support/webMercatorUtils',
+  'esri/Graphic',
   'esri/PopupTemplate',
   'esri/layers/MapImageLayer',
   'esri/layers/TileLayer',
-  'esri/layers/FeatureLayer',
   'esri/layers/WMSLayer',
-  'esri/symbols/SimpleFillSymbol',
-  'esri/symbols/SimpleLineSymbol',
   'esri/Map',
-  'esri/tasks/IdentifyTask',
-  'esri/tasks/QueryTask',
-  'esri/tasks/support/IdentifyParameters',
-  'esri/tasks/support/Query',
+  'esri/request',
   'esri/views/MapView',
   'esri/widgets/BasemapGallery',
   'esri/widgets/Expand',
-  'esri/widgets/Home',
   'esri/widgets/LayerList',
   'esri/widgets/Legend',
-  'esri/widgets/Locate',
-  'esri/widgets/Popup',
   'esri/widgets/ScaleBar',
   'esri/widgets/Search',
 ], function (
-  arrayUtils,
-  dom,
-  domConstruct,
-  parser,
-  Color,
   Extent,
-  webMercatorUtils,
+  Graphic,
   PopupTemplate,
   MapImageLayer,
   TileLayer,
-  FeatureLayer,
   WMSLayer,
-  SimpleFillSymbol,
-  SimpleLineSymbol,
   Map,
-  IdentifyTask,
-  QueryTask,
-  IdentifyParameters,
-  Query,
+  esriRequest,
   MapView,
   BasemapGallery,
   Expand,
-  Home,
   LayerList,
   Legend,
-  Locate,
-  Popup,
   ScaleBar,
   Search
 ) {
-  parser.parse();
-
-  //Add widgets on the map
-  const popup = new Popup(
-    {
-      fillSymbol: new SimpleFillSymbol(
-        SimpleFillSymbol.STYLE_NULL,
-        new SimpleLineSymbol(
-          SimpleLineSymbol.STYLE_SOLID,
-          new Color([255, 0, 0]),
-          2
-        ),
-        new Color([255, 255, 0, 0.25])
-      ),
-    },
-    domConstruct.create('div')
-  );
-
+  // Initialize map
   const map = new Map({
     basemap: 'topo',
   });
@@ -103,532 +51,201 @@ require([
     ),
   });
 
-  const search = new Search({ view: view });
-  view.ui.add(search, { position: 'top-right' });
+  view.when(function () {
+    const search = new Search({ view: view });
+    view.ui.add(search, { position: 'top-right' });
 
-  const basemapGallery = new BasemapGallery({
-    view: view,
-    container: document.createElement('div'),
-  });
-
-  // Create an Expand instance and set the content
-  // property to the DOM node of the basemap gallery widget
-  // Use an Esri icon font to represent the content inside
-  // of the Expand widget
-  const bgExpand = new Expand({
-    view: view,
-    content: basemapGallery,
-  });
-  // close the expand whenver a basemap is selected
-  basemapGallery.watch('activeBasemap', function () {
-    const mobileSize =
-      view.heightBreakpoint === 'xsmall' || view.widthBreakpoint === 'xsmall';
-
-    if (mobileSize) {
-      bgExpand.collapse();
-    }
-  });
-  view.ui.add(bgExpand, 'top-right');
-
-  const homeBtn = new Home({ view: view });
-  view.ui.add(homeBtn, { position: 'top-left' });
-
-  const locateBtn = new Locate({ view: view });
-  view.ui.add(locateBtn, { position: 'top-left' });
-
-  const scaleBar = new ScaleBar({ view: view, unit: 'dual' });
-  view.ui.add(scaleBar, { position: 'bottom-left' });
-
-  // var url = 'https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows';
-  // const opts = {
-  //   visible: false,
-  //   format: 'png',
-  //   version: '1.3.0',
-  //   visibleLayers: ['drainedarea:huc8_w_drainclass'],
-  //   featureInfoFormat: 'application/json',
-  //   getFeatureInfoUrl:
-  //     'https://montana.agriculture.purdue.edu/geoserver/drainedarea/WMS/?service=WMS&version=1.3.0&info_format=application/json',
-  // };
-  // var huc8FeatureLayer = new WMSLayer(url, opts);
-  // huc8FeatureLayer.id = 'huc8layer';
-
-  // //Add dynamic map layers from Mapserver
-  // const opts2 = {
-  //   format: 'png',
-  //   version: '1.3.0',
-  //   visibleLayers: ['drainedarea:state_w_drainclass'],
-  // };
-  // var stateLayer = new WMSLayer(url, opts2);
-  // stateLayer.id = 'stateLayer';
-
-  // const opts3 = {
-  //   format: 'png',
-  //   version: '1.3.0',
-  //   visibleLayers: ['drainedarea:county_w_drainclass'],
-  //   visible: false,
-  // };
-  // var countyFeatureLayer = new WMSLayer(url, opts3);
-  // countyFeatureLayer.id = 'countyFeatureLayer';
-
-  const huc8FeatureURL =
-    'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/4';
-
-  const huc8QueryLayer = new FeatureLayer(huc8FeatureURL, {
-    visible: false,
-    id: 'huc8Layer',
-    outFields: ['*'],
-    opacity: 0,
-  });
-  const countyFeatureURL =
-    'https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/2';
-  const countyQueryLayer = new FeatureLayer(countyFeatureURL, {
-    opacity: 0,
-    visible: false,
-    id: 'countyLayer',
-    outFields: ['*'],
-  });
-  const querylayers = [huc8QueryLayer, countyQueryLayer];
-
-  const rasterURL1 =
-    'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
-  const operationalLayer1 = new MapImageLayer(rasterURL1, {
-    opacity: 0.6,
-    visible: true,
-    id: 'drainageExtentLayer',
-  });
-
-  const rasterURL2 =
-    'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_CONUS_Drainage_Classes/MapServer';
-
-  const operationalLayer2 = new TileLayer(rasterURL2, {
-    opacity: 0.6,
-    visible: false,
-    id: 'drainageClassLayer',
-  });
-
-  const rasterURL3 =
-    'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_Hillshade/MapServer';
-
-  const operationalLayer3 = new TileLayer(rasterURL3, {
-    opacity: 0.3,
-    visible: true,
-    id: '3',
-  });
-
-  // map.addMany([operationalLayer1, operationalLayer2, operationalLayer3]);
-
-  // map.on('layers-add-result', function (evt) {
-  //   const layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
-  //     return { layer: layer.layer, title: ' ' };
-  //   });
-
-  //   let layerLegends = [];
-
-  //   for (let i = 0; i < layerInfo.length; i++) {
-  //     if (layerInfo[i].layer.id !== '3') {
-  //       layerLegends.push(layerInfo[i]);
-  //     }
-  //   }
-
-  //   if (layerLegends.length > 0) {
-  //     const legendDijit = new Legend(
-  //       {
-  //         map: map,
-
-  //         layerInfos: layerLegends.reverse(),
-  //       },
-  //       'legendDiv'
-  //     );
-  //     legendDijit.startup();
-  //   }
-  // });
-
-  //Map event handling
-  // dojo.connect(map, 'onLoad', mapReady);
-  // dojo.connect(map, 'onMouseMove', showCoordinates);
-
-  // const layerList = new LayerList({
-  //   view: view,
-  //   layers: [
-  //     {
-  //       layer: operationalLayer3,
-  //       id: 'Hillshade',
-  //       visibility: true,
-  //     },
-  //   ],
-  //   showLegend: false,
-  //   showSubLayers: false,
-  //   showOpacitySlider: false,
-  // });
-  // view.ui.add(layerList, { position: 'top-right' });
-
-  // const layerList1 = new LayerList({
-  //   view: view,
-  //   layers: [
-  //     {
-  //       layer: operationalLayer2,
-  //       id: 'Natural Drainage Class',
-  //       visibility: false,
-  //     },
-  //     {
-  //       layer: operationalLayer1,
-  //       id: 'Agriculture Drainage Likely Extent',
-  //       visibility: true,
-  //     },
-  //   ],
-  //   showLegend: false,
-  //   showSubLayers: false,
-  //   showOpacitySlider: false,
-  // });
-  // view.ui.add(layerList1, { position: 'top-right' });
-
-  // const layerList2 = new LayerList(
-  //   {
-  //     map: map,
-  //     layers: [
-  //       {
-  //         layer: huc8FeatureLayer,
-  //         id: 'HUC8 Watershed',
-  //         title: 'HUC8 Watershed',
-  //         visibility: false,
-  //       },
-  //       {
-  //         layer: countyFeatureLayer,
-  //         id: 'County',
-  //         title: 'County',
-  //         visibility: false,
-  //       },
-  //     ],
-  //     showLegend: false,
-  //     showSubLayers: false,
-  //     showOpacitySlider: false,
-  //   },
-  //   'layerList2'
-  // );
-  // view.ui.add(layerList2, { position: 'top-right' });
-
-  function mapReady(map) {
-    dojo.connect(map, 'onClick', function (event) {
-      let identitfyResults = [];
-      let mapPoint = event.mapPoint;
-      map.infoWindow.clearFeatures();
-      map.infoWindow.setTitle('Likely drained agricultural land by state');
-      map.infoWindow.setContent('Loading...');
-      map.infoWindow.show(mapPoint);
-      const requiredLayers = [
-        'stateLayer',
-        'countyFeatureLayer',
-        'huc8FeatureLayer',
-        'drainageExtentLayer',
-        'drainageClassLayer',
-      ];
-
-      // Create array of dynamic nad feature layers' ids
-
-      const featureLayers = dojo.map(map.graphicsLayerIds, function (layerId) {
-        return map.getLayer(layerId);
-      });
-      // Filter layers to only layers that need identify operation (e.g. visible)
-      const showFeatureLayers = dojo.filter(querylayers, function (layer) {
-        return layer;
-      });
-      // Create array of Query tasks for each feature layer
-      const queryTasks = dojo.map(showFeatureLayers, function (layer) {
-        return new QueryTask(layer.url);
-      });
-      const queries = createQueryParams(showFeatureLayers, event);
-      const queryPromises = queryTasks.map(function (task, index) {
-        return task.execute(queries[index]);
-      });
-      const promises = queryPromises;
-      Promise.all(promises).then(function (response) {
-        let responseLayers = { dynamic: [], feature: [] };
-        response.forEach(function (rep) {
-          if (Array.isArray(rep)) {
-            responseLayers.dynamic.push(rep);
-          } else {
-            responseLayers.feature.push(rep);
-            console.log(rep);
-          }
-        });
-        executeIdentifyTask(responseLayers, mapPoint);
-      });
-    });
-  }
-
-  function createQueryParams(showLayers, event) {
-    const queryParamsList = dojo.map(showLayers, function (layer) {
-      const queryParams = new Query();
-      queryParams.geometry = event.mapPoint;
-      queryParams.outFields = ['*'];
-      queryParams.returnGeometry = true;
-
-      return queryParams;
+    const basemapGallery = new BasemapGallery({
+      view: view,
+      container: document.createElement('div'),
     });
 
-    return queryParamsList;
-  }
-
-  function createIdentifyParams(showLayers, event) {
-    const identifyParamsList = dojo.map(showLayers, function (layer) {
-      const identifyParams = new IdentifyParameters();
-      identifyParams.width = map.width;
-      identifyParams.height = map.height;
-      identifyParams.geometry = event.mapPoint;
-      identifyParams.mapExtent = map.extent;
-      identifyParams.tolerance = 3;
-      identifyParams.returnGeometry = true;
-
-      // Map service may have multiple layers, collect those here
-      const subLayers = dojo.map(layer.layerInfos, function (subLayer) {
-        if (subLayer.subLayerIds) {
-          return subLayer.subLayerIds;
-        } else {
-          return subLayer.id;
-        }
-      });
-      identifyParams.layerIds = subLayers;
-      return identifyParams;
+    // Create an Expand instance and set the content
+    // property to the DOM node of the basemap gallery widget
+    // Use an Esri icon font to represent the content inside
+    // of the Expand widget
+    const bgExpand = new Expand({
+      view: view,
+      content: basemapGallery,
     });
+    // close the expand whenver a basemap is selected
+    basemapGallery.watch('activeBasemap', function () {
+      const mobileSize =
+        view.heightBreakpoint === 'xsmall' || view.widthBreakpoint === 'xsmall';
 
-    return identifyParamsList;
-  }
-
-  function executeIdentifyTask(response, mapPoint, queries, queryTasks) {
-    let results = [];
-    let taskUrls = [];
-    let featureResults = [];
-    console.log(response);
-    const featureLayers = dojo.filter(response.feature, function (layer) {
-      return layer;
-    });
-    for (let i = 0; i < featureLayers.length; i++) {
-      featureResults = featureResults.concat(featureLayers[i]);
-    }
-    var huc8num;
-    var countyfips;
-    var statefips;
-    featureResults = dojo.map(featureResults, function (result, index) {
-      let feature = result.features[0];
-      var layerName;
-      if (result.fields[1].name == 'NAME') {
-        layerName = 'Counties';
-        statefips = feature.attributes['STATE_FIPS'];
-        countyfips = feature.attributes['FIPS'];
-      } else {
-        layerName = 'HUC8 Watersheds';
-        huc8num = feature.attributes['huc8'];
+      if (mobileSize) {
+        bgExpand.collapse();
       }
-      feature.attributes.layerName = layerName;
-      const drainageCondition = new PopupTemplate(layerName);
-      feature.setPopupTemplate(drainageCondition);
-
-      return feature;
     });
-    /* code for querying from our server the acres likely drained */
-    esri.config.defaults.io.corsEnabledServers.push(
-      'lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py'
+    view.ui.add(bgExpand, 'top-left');
+
+    const scaleBar = new ScaleBar({ view: view, unit: 'dual' });
+    view.ui.add(scaleBar, { position: 'bottom-right' });
+
+    const drainedAreaUrl =
+      'https://montana.agriculture.purdue.edu/geoserver/drainedarea/ows';
+
+    const drainedAreaFeatureInfoURL =
+      'https://montana.agriculture.purdue.edu/geoserver/drainedarea/WMS/?service=WMS&version=1.3.0';
+
+    const boundaryLayers = new WMSLayer({
+      url: drainedAreaUrl,
+      version: '1.3.0',
+      featureInfoFormat: 'application/json',
+      featureInfoUrl: drainedAreaFeatureInfoURL,
+      sublayers: [
+        {
+          name: 'drainedarea:huc8_w_drainclass',
+          title: 'Watershed (HUC 8)',
+          visible: false,
+        },
+        {
+          name: 'drainedarea:county_w_drainclass',
+          title: 'County',
+          visible: false,
+        },
+        { name: 'drainedarea:state_w_drainclass', title: 'State' },
+      ],
+      title: 'Boundaries',
+    });
+
+    const drainageClassScoresURL =
+      'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
+    const drainageClassScoreLayer = new MapImageLayer({
+      url: drainageClassScoresURL,
+      opacity: 0.6,
+      id: 'drainageClassScores',
+      title: 'Drainage Class Scores',
+    });
+
+    const soilDrainageClassURL =
+      'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_CONUS_Drainage_Classes/MapServer';
+    const soilDrainageClassLayer = new TileLayer({
+      url: soilDrainageClassURL,
+      opacity: 0.6,
+      visible: false,
+      id: 'drainageClassLayer',
+      title: 'Soil',
+    });
+
+    map.layers.push(
+      soilDrainageClassLayer,
+      drainageClassScoreLayer,
+      boundaryLayers
     );
 
-    var queryurl =
-      'https://lthia.agriculture.purdue.edu/cgi-bin/drainedarea.py';
-    var layersRequest = esri.request({
-      url: queryurl,
-      content: { huc: huc8num, county: countyfips, state: statefips },
-      handleAs: 'json',
-      callbackParamName: 'callback',
+    const layerList = new Expand({
+      content: new LayerList({
+        view: view,
+      }),
+      view: view,
+      expanded: true,
     });
-    let responseobj = {};
-    Promise.resolve(layersRequest).then(function (response) {
-      responseobj = response;
-      createPopups(responseobj, mapPoint);
-      return response;
+    view.ui.add(layerList, 'top-right');
+
+    const legend = new Expand({
+      content: new Legend({
+        view: view,
+        style: 'card',
+        layerInfos: [
+          {
+            layer: drainageClassScoreLayer,
+            title: 'Drainage Class Scores',
+          },
+          {
+            layer: soilDrainageClassLayer,
+            title: 'Soil',
+          },
+        ],
+      }),
+      view: view,
+      expanded: true,
     });
+    view.ui.add(legend, 'bottom-left');
 
-    return featureResults;
+    view.popup.autoOpenEnabled = false;
+    view.on('click', function (event) {
+      const mapPoint = event.mapPoint;
+      const screenPoint = event.screenPoint;
+
+      executeIdentifyTask(mapPoint, screenPoint, view);
+    });
+  });
+
+  function executeIdentifyTask(mapPoint, screenPoint, view) {
+    const url =
+      'https://montana.agriculture.purdue.edu/geoserver/drainedarea/wms';
+    const options = {
+      query: {
+        SERVICE: 'WMS',
+        VERSION: '1.1.1',
+        REQUEST: 'GetFeatureInfo',
+        QUERY_LAYERS:
+          'drainedarea:county_w_drainclass,drainedarea:state_w_drainclass,drainedarea:huc8_w_drainclass',
+        LAYERS:
+          'drainedarea:county_w_drainclass,drainedarea:state_w_drainclass,drainedarea:huc8_w_drainclass',
+        INFO_FORMAT: 'application/json',
+        FEATURE_COUNT: 50,
+        X: screenPoint.x,
+        Y: screenPoint.y,
+        SRS: 'EPSG:3857',
+        WIDTH: view.width,
+        HEIGHT: view.height,
+        BBOX: `${view.extent.xmin},${view.extent.ymin},${view.extent.xmax},${view.extent.ymax}`,
+      },
+    };
+
+    esriRequest(url, options).then(function (response) {
+      if (response && response.data) {
+        createPopup(mapPoint, response.data, view);
+      } else {
+        view.popup = null;
+        view.popup.open({
+          location: mapPoint,
+          title: 'Error',
+          content: 'Unable to process request at this time.',
+        });
+      }
+    });
   }
-  function createPopups(responseobj, mapPoint) {
-    let countydata = responseobj.results.county;
-    let statedata = responseobj.results.state;
-    let hucdata = responseobj.results.huc;
-    var windowFeatures = [];
-    console.log(responseobj);
-    /* check for response error */
-    if (responseobj.results.error) {
-      map.infoWindow.clearFeatures();
-      map.infoWindow.setTitle('Error');
-      map.infoWindow.setContent(responseobj.results.error);
-      map.infoWindow.show(mapPoint);
-    } else {
-      /* state popup */
-      var statecontent =
-        '<b>' +
-        statedata.state +
-        '</b><br> Area in acres: <br> &emsp;Acres Likely Drained: ' +
-        statedata.ac_likely.toFixed(2) +
-        '<br>&emsp;Acres Likely or Potentially Drained: ' +
-        statedata.ac_likely_pot.toFixed(2) +
-        '<br>Percent of state: <br> &emsp;Percent of state likely drained: ' +
-        statedata.per_st_likely.toFixed(2) +
-        '<br>&emsp;Percent of state likely or potentially drained: ' +
-        statedata.per_st_likely_pot.toFixed(2); // +
-      // "<br>&emsp;Percent of ag land: <br> Percent of Ag land likely to be drained: " + statedata.per_ag_likely.toFixed(2) +
-      // "<br>P&emsp;ercent of ag land likely or potentially to be drained: " + statedata.per_st_likely_pot.toFixed(2);
-      var state = {
-        getLayer: function () {}, // as long as it returns null, you're good
-        attributes: {}, // this does not influence the content in the popup
-        getPopupTemplate: function () {
-          return {
-            title: 'Likely drained agricultural lands by state',
-            content: statecontent,
-            declaredClass: 'esri.PopupTemplate',
-          };
-        },
-        getTitle: function () {
-          return this.getPopupTemplate().title;
-        },
-        getContent: function () {
-          return statecontent;
-        },
-      };
-      windowFeatures.push(state);
 
-      /* county popup */
-      var countycontent =
-        '<b>' +
-        countydata.county +
-        '</b><br>Area in acres:<br> &emsp;Acres Likely Drained: ' +
-        countydata.ac_likely.toFixed(2) +
-        '<br> &emsp;Acres Likely or Potentially Drained: ' +
-        countydata.ac_likely_pot.toFixed(2) +
-        '<br>Percent of county: <br> &emsp;Percent of county likely drained: ' +
-        countydata.per_co_likely.toFixed(2) +
-        '<br>&emsp;Percent of county likely or potentially drained: ' +
-        countydata.per_co_likely_pot.toFixed(2); // +
-      // "<br>&emsp; Percent of ag land: <br> Percent of Ag land likely to be drained: " + countydata.per_ag_likely.toFixed(2) +
-      // "<br>&emsp; Percent of ag land likely or potentially to be drained: " + countydata.per_st_likely_pot.toFixed(2);
-      var county = {
-        getLayer: function () {},
-        attributes: {},
-        getPopupTemplate: function () {
-          return {
-            title: 'Likely drained agricultural lands by county',
-            content: '${*}',
-            declaredClass: 'esri.PopupTemplate',
-          };
-        },
-        getTitle: function () {
-          return this.getPopupTemplate().title;
-        },
-        getContent: function () {
-          return countycontent;
-        },
-      };
-      windowFeatures.push(county);
+  function createPopup(mapPoint, data, view) {
+    let graphics = [];
 
-      /* huc8 popup */
-      var huccontent =
-        '<b>' +
-        hucdata.huc8_name +
-        ' ' +
-        hucdata.huc8_no +
-        '</b><br> Area in acres: <br> &emsp;Acres Likely Drained: ' +
-        hucdata.ac_likely.toFixed(2) +
-        '<br>&emsp;Acres Likely or Potentially Drained: ' +
-        hucdata.ac_likely_pot.toFixed(2) +
-        '<br>Percent of watershed: <br>&emsp;Percent of watershed likely drained: ' +
-        hucdata.per_huc8_likely.toFixed(2) +
-        '<br>&emsp;Percent of watershed likely or potentially drained: ' +
-        hucdata.per_huc8_likely_pot.toFixed(2); //+
-      // "<br>&emsp;Percent of ag land: <br> Percent of Ag land likely to be drained: " + hucdata.per_ag_likely.toFixed(2) +
-      // "<br>&emsp;Percent of ag land likely or potentially to be drained: " + hucdata.per_st_likely_pot.toFixed(2);
-      var huc = {
-        getLayer: function () {},
-        attributes: {},
-        getPopupTemplate: function () {
-          return {
-            title: 'Likely drained agricultural lands by watershed',
-            content: '${*}',
-            declaredClass: 'esri.PopupTemplate',
-          };
-        },
-        getTitle: function () {
-          return this.getPopupTemplate().title;
-        },
-        getContent: function () {
-          return huccontent;
-        },
-      };
-      windowFeatures.push(huc);
-      map.infoWindow.resize(400, 100);
-      map.infoWindow.setFeatures(windowFeatures);
-      map.infoWindow.show(mapPoint);
-    }
-    return responseobj;
-  }
-  function executeIdentifyTask2(
-    event,
-    identifyParams,
-    identifyTask
-    //  featureAttributes
-  ) {
-    identifyParams.geometry = event.mapPoint;
-    identifyParams.mapExtent = map.extent;
-    identifyTask = new IdentifyTask(huc8FeatureURL);
-    const deferred = []; // = identifyTask.execute(identifyParams);
-    //    deferred.addCallback(function (response) {
-    identifyTask.execute(identifyParams).then(function (response) {
-      // response is an array of identify result objects
-      // Let's return an array of features.
-      return arrayUtils.map(response, function (result) {
-        let feature = result.feature;
-        let layerName = 'Drained condition';
-        feature.attributes.layerName = layerName;
+    data.features.forEach(function (feature) {
+      const featureID = feature.id.split('.')[0].split('_')[0];
+      const boundary = featureID === 'huc8' ? 'watershed' : featureID;
+      let popupContent = '';
+      let popupGraphic = new Graphic();
+      let props = feature.properties;
 
-        const condition = {
-          0: 'Unlikely to be drained',
-          1: 'Potentially drained',
-          2: 'Likely to be drained',
-        };
+      popupContent = `<strong>${
+        featureID === 'huc8' ? `${props.name} (${props.huc8})` : props.NAME
+      }</strong><br /><br />`;
+      popupContent += 'Acres Likely Drained: ';
+      popupContent += `${formatNumber(props.LIKELY_ARE)}<br />`;
+      popupContent += 'Acres Likely or Potentially Drained: ';
+      popupContent += `${formatNumber(props.POTENTIALL)}<br />`;
+      popupContent += `Percent of ${boundary} likely drained: `;
+      popupContent += `${props.LIKELY_PER.toFixed(2)}%<br />`;
+      popupContent += `Percent of ${boundary} likely or potentially drained: `;
+      popupContent += `${props.POTENTIA_1.toFixed(2)}%`;
 
-        const naturalClass = {
-          0: 'Moderately well - Excessively drained',
-          1: 'Somewhat poorly drained',
-          2: 'Poorly - Very poorly drained',
-        };
-
-        const drainageCondition = new PopupTemplate(
-          layerName,
-          condition[feature.attributes['Pixel Value']] +
-            '<br/><br/>Natural drainage class: ' +
-            naturalClass[feature.attributes['Pixel Value']] +
-            '<br/><br/>Area (ac): ' +
-            featureAttributes['AREAACRES'] +
-            '<br/><br/>HUC8: ' +
-            featureAttributes['HUC8']
-        );
-
-        feature.setPopupTemplate(drainageCondition);
-        console.log('feature\n');
-        deferred = feature;
-        return feature;
+      popupGraphic.popupTemplate = new PopupTemplate({
+        title: `Likely drained agricultural lands by ${boundary}`,
+        content: popupContent,
       });
+
+      graphics.push(popupGraphic);
     });
 
-    // InfoWindow expects an array of features from each deferred
-    // object that you pass. If the response from the task execution
-    // above is not an array of features, then you need to add a callback
-    // like the one above to post-process the response and return an
-    // array of features.
-    map.infoWindow.setFeatures([deferred]);
-    map.infoWindow.show(event.mapPoint);
-  }
+    function formatNumber(n) {
+      return parseFloat(n.toFixed(2)).toLocaleString();
+    }
 
-  function showCoordinates(evt) {
-    //the map is in web mercator but display coordinates in geographic (lat, long)
-    const mp = webMercatorUtils.webMercatorToGeographic(evt.mapPoint);
-
-    //display mouse coordinates
-    dom.byId('info').innerHTML = mp.x.toFixed(3) + ', ' + mp.y.toFixed(3);
+    view.popup.open({
+      location: mapPoint,
+      features: graphics,
+    });
   }
 });
