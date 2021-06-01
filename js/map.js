@@ -55,6 +55,7 @@ require([
     const search = new Search({ view: view });
     view.ui.add(search, { position: 'top-right' });
 
+
     const basemapGallery = new BasemapGallery({
       view: view,
       container: document.createElement('div'),
