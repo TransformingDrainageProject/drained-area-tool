@@ -55,7 +55,6 @@ require([
     const search = new Search({ view: view });
     view.ui.add(search, { position: 'top-right' });
 
-
     const basemapGallery = new BasemapGallery({
       view: view,
       container: document.createElement('div'),
@@ -226,11 +225,15 @@ require([
       popupContent += 'Acres Likely Drained: ';
       popupContent += `${formatNumber(props.LIKELY_ARE)}<br />`;
       popupContent += 'Acres Likely or Potentially Drained: ';
-      popupContent += `${formatNumber(props.POTENTIALL)}<br />`;
+      popupContent += `${formatNumber(
+        parseFloat(props.LIKELY_ARE) + parseFloat(props.POTENTIALL)
+      )}<br />`;
       popupContent += `Percent of ${boundary} likely drained: `;
       popupContent += `${props.LIKELY_PER.toFixed(2)}%<br />`;
       popupContent += `Percent of ${boundary} likely or potentially drained: `;
-      popupContent += `${props.POTENTIA_1.toFixed(2)}%`;
+      popupContent += `${(
+        parseFloat(props.LIKELY_PER) + parseFloat(props.POTENTIA_1)
+      ).toFixed(2)}%`;
 
       popupGraphic.popupTemplate = new PopupTemplate({
         title: `Likely drained agricultural lands by ${boundary}`,
