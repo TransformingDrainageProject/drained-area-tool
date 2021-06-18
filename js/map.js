@@ -197,6 +197,7 @@ require([
 
     esriRequest(url, options).then(function (response) {
       if (response && response.data) {
+        console.log(response);
         createPopup(mapPoint, response.data, view);
       } else {
         view.popup = null;
@@ -211,40 +212,77 @@ require([
 
   function createPopup(mapPoint, data, view) {
     let graphics = [];
+    let popupContent = '';
+    let popupGraphic = new Graphic();
 
-    data.features.forEach(function (feature) {
-      const featureID = feature.id.split('.')[0].split('_')[0];
-      const boundary = featureID === 'huc8' ? 'watershed' : featureID;
-      let popupContent = '';
-      let popupGraphic = new Graphic();
-      let props = feature.properties;
+    if (data.features.length > 0) {
+      data.features.forEach(function (feature) {
+        const featureID = feature.id.split('.')[0].split('_')[0];
+        const boundary = featureID === 'huc8' ? 'watershed' : featureID;
+        let props = feature.properties;
+        // drained class values
+        const likelyArea = parseFloat(props.LIKELY_ARE);
+        const likelyPct = parseFloat(props.LIKELY_PER);
+        const potentialArea = parseFloat(props.POTENTIALL);
+        const potentialPct = parseFloat(props.POTENTIA_1);
+        const unlikelyPct = parseFloat(props.UNLIKELY_P);
+        const totalPct = likelyPct + potentialPct + unlikelyPct;
+        // location name
+        popupContent = `<strong>${
+          featureID === 'huc8' ? `${props.name} (${props.huc8})` : props.NAME
+        }</strong><br /><br />`;
+        // area in acres
+        popupContent +=
+          '<table style="width: 90%"><tr><td><strong>Area in acres</strong></td><td></td></tr>';
+        popupContent += '<tr><td>Acres Likely Drained:</td>';
+        popupContent += `<td align="right">${formatNumber(
+          likelyArea
+        )} ac.</td></tr>`;
+        popupContent += '<tr><td>Acres Likely or Potentially Drained:</td>';
+        popupContent += `<td align="right">${formatNumber(
+          likelyArea + potentialArea
+        )} ac.</td></tr></table><br />`;
+        // percent of state/county/huc8;
+        popupContent += `<table style="width: 90%"><tr><td><strong>Percent of ${boundary}</strong></td><td></td></tr>`;
+        popupContent += `<tr><td>Percent of ${boundary} likely drained:</td>`;
+        popupContent += `<td align="right">${likelyPct.toFixed(1)}%</td></tr>`;
+        popupContent += `<tr><td>Percent of ${boundary} likely or potentially drained:</td>`;
+        popupContent += `<td align="right">${(likelyPct + potentialPct).toFixed(
+          1
+        )}%</td></tr></table><br />`;
+        // percent of ag land
+        const agLikely = (likelyPct / totalPct) * 100;
+        const agLikelyOrPotential =
+          ((likelyPct + potentialPct) / totalPct) * 100;
+        popupContent +=
+          '<table style="width: 90%"><tr><td><strong>Percent of ag land</strong></td><td></td></tr>';
+        popupContent += '<tr><td>Percent of ag land likely to be drained:</td>';
+        popupContent += `<td align="right">${agLikely.toFixed(1)}%</td></tr>`;
+        popupContent +=
+          '<tr><td>Percent of ag land likely or potentially drained:</td>';
+        popupContent += `<td align="right">${agLikelyOrPotential.toFixed(
+          1
+        )}%</td></tr></table>`;
+        popupContent;
+        // popup title and content
+        popupGraphic.popupTemplate = new PopupTemplate({
+          title: `Likely drained agricultural lands by ${boundary}`,
+          content: popupContent,
+        });
 
-      popupContent = `<strong>${
-        featureID === 'huc8' ? `${props.name} (${props.huc8})` : props.NAME
-      }</strong><br /><br />`;
-      popupContent += 'Acres Likely Drained: ';
-      popupContent += `${formatNumber(props.LIKELY_ARE)}<br />`;
-      popupContent += 'Acres Likely or Potentially Drained: ';
-      popupContent += `${formatNumber(
-        parseFloat(props.LIKELY_ARE) + parseFloat(props.POTENTIALL)
-      )}<br />`;
-      popupContent += `Percent of ${boundary} likely drained: `;
-      popupContent += `${props.LIKELY_PER.toFixed(2)}%<br />`;
-      popupContent += `Percent of ${boundary} likely or potentially drained: `;
-      popupContent += `${(
-        parseFloat(props.LIKELY_PER) + parseFloat(props.POTENTIA_1)
-      ).toFixed(2)}%`;
-
+        graphics.push(popupGraphic);
+      });
+    } else {
+      popupContent = 'No data is available for this area.';
       popupGraphic.popupTemplate = new PopupTemplate({
-        title: `Likely drained agricultural lands by ${boundary}`,
+        title: 'No data',
         content: popupContent,
       });
-
       graphics.push(popupGraphic);
-    });
+    }
 
     function formatNumber(n) {
-      return parseFloat(n.toFixed(2)).toLocaleString();
+      return parseFloat(n.toFixed(0)).toLocaleString();
     }
 
     view.popup.open({
