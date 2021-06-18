@@ -197,7 +197,6 @@ require([
 
     esriRequest(url, options).then(function (response) {
       if (response && response.data) {
-        console.log(response);
         createPopup(mapPoint, response.data, view);
       } else {
         view.popup = null;
@@ -212,11 +211,11 @@ require([
 
   function createPopup(mapPoint, data, view) {
     let graphics = [];
-    let popupContent = '';
-    let popupGraphic = new Graphic();
 
     if (data.features.length > 0) {
       data.features.forEach(function (feature) {
+        let popupContent = '';
+        let popupGraphic = new Graphic();
         const featureID = feature.id.split('.')[0].split('_')[0];
         const boundary = featureID === 'huc8' ? 'watershed' : featureID;
         let props = feature.properties;
@@ -272,6 +271,8 @@ require([
         graphics.push(popupGraphic);
       });
     } else {
+      let popupContent = '';
+      let popupGraphic = new Graphic();
       popupContent = 'No data is available for this area.';
       popupGraphic.popupTemplate = new PopupTemplate({
         title: 'No data',
