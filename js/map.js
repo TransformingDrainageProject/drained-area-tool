@@ -234,19 +234,19 @@ require([
         // area in acres
         popupContent +=
           '<table style="width: 90%"><tr><td><strong>Area in acres</strong></td><td></td></tr>';
-        popupContent += '<tr><td>Acres Likely Drained:</td>';
+        popupContent += '<tr><td>Likely drained:</td>';
         popupContent += `<td align="right">${formatNumber(
           likelyArea
         )} ac.</td></tr>`;
-        popupContent += '<tr><td>Acres Likely or Potentially Drained:</td>';
+        popupContent += '<tr><td>Likely or potentially drained:</td>';
         popupContent += `<td align="right">${formatNumber(
           likelyArea + potentialArea
         )} ac.</td></tr></table><br />`;
         // percent of state/county/huc8;
         popupContent += `<table style="width: 90%"><tr><td><strong>Percent of ${boundary}</strong></td><td></td></tr>`;
-        popupContent += `<tr><td>Percent of ${boundary} likely drained:</td>`;
+        popupContent += `<tr><td>Likely drained:</td>`;
         popupContent += `<td align="right">${likelyPct.toFixed(1)}%</td></tr>`;
-        popupContent += `<tr><td>Percent of ${boundary} likely or potentially drained:</td>`;
+        popupContent += `<tr><td>Likely or potentially drained:</td>`;
         popupContent += `<td align="right">${(likelyPct + potentialPct).toFixed(
           1
         )}%</td></tr></table><br />`;
@@ -256,10 +256,9 @@ require([
           ((likelyPct + potentialPct) / totalPct) * 100;
         popupContent +=
           '<table style="width: 90%"><tr><td><strong>Percent of ag land</strong></td><td></td></tr>';
-        popupContent += '<tr><td>Percent of ag land likely to be drained:</td>';
+        popupContent += '<tr><td>Likely to be drained:</td>';
         popupContent += `<td align="right">${agLikely.toFixed(1)}%</td></tr>`;
-        popupContent +=
-          '<tr><td>Percent of ag land likely or potentially drained:</td>';
+        popupContent += '<tr><td>Likely or potentially drained:</td>';
         popupContent += `<td align="right">${agLikelyOrPotential.toFixed(
           1
         )}%</td></tr></table>`;
