@@ -88,25 +88,45 @@ require([
     const drainedAreaFeatureInfoURL =
       'https://montana.agriculture.purdue.edu/geoserver/drainedarea/WMS/?service=WMS&version=1.3.0';
 
-    const boundaryLayers = new WMSLayer({
+    const stateLayer = new WMSLayer({
       url: drainedAreaUrl,
       version: '1.3.0',
       featureInfoFormat: 'application/json',
       featureInfoUrl: drainedAreaFeatureInfoURL,
       sublayers: [
-        {
-          name: 'drainedarea:huc8_w_drainclass',
-          title: 'Watershed (HUC 8)',
-          visible: false,
-        },
+        { name: 'drainedarea:state_w_drainclass', title: 'State Boundaries' },
+      ],
+      title: 'State Boundaries',
+    });
+
+    const countyLayer = new WMSLayer({
+      url: drainedAreaUrl,
+      version: '1.3.0',
+      featureInfoFormat: 'application/json',
+      featureInfoUrl: drainedAreaFeatureInfoURL,
+      visible: false,
+      sublayers: [
         {
           name: 'drainedarea:county_w_drainclass',
-          title: 'County',
-          visible: false,
+          title: 'County Boundaries',
         },
-        { name: 'drainedarea:state_w_drainclass', title: 'State' },
       ],
-      title: 'Boundaries',
+      title: 'County Boundaries',
+    });
+
+    const hucLayer = new WMSLayer({
+      url: drainedAreaUrl,
+      version: '1.3.0',
+      featureInfoFormat: 'application/json',
+      featureInfoUrl: drainedAreaFeatureInfoURL,
+      visible: false,
+      sublayers: [
+        {
+          name: 'drainedarea:huc8_w_drainclass',
+          title: 'Watershed (HUC 8) Boundaries',
+        },
+      ],
+      title: 'Watershed (HUC8) Boundaries',
     });
 
     const drainageClassScoresURL =
@@ -115,7 +135,7 @@ require([
       url: drainageClassScoresURL,
       opacity: 0.6,
       id: 'drainageClassScores',
-      title: 'Drainage Class Scores',
+      title: 'Agricultural Drainage Likely Extent',
     });
 
     const soilDrainageClassURL =
@@ -125,13 +145,15 @@ require([
       opacity: 0.6,
       visible: false,
       id: 'drainageClassLayer',
-      title: 'Soil',
+      title: 'Natural Soil Drainage Class',
     });
 
     map.layers.push(
       soilDrainageClassLayer,
       drainageClassScoreLayer,
-      boundaryLayers
+      hucLayer,
+      countyLayer,
+      stateLayer
     );
 
     const layerList = new Expand({
@@ -146,7 +168,7 @@ require([
     const legend = new Expand({
       content: new Legend({
         view: view,
-        style: 'card',
+        style: 'classic',
         layerInfos: [
           {
             layer: drainageClassScoreLayer,
