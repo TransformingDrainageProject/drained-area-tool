@@ -145,7 +145,7 @@ require([
       opacity: 0.6,
       visible: false,
       id: 'drainageClassLayer',
-      title: 'Natural Soil Drainage Class',
+      title: 'Natural Soil Drainage Classes',
     });
 
     map.layers.push(
@@ -172,11 +172,9 @@ require([
         layerInfos: [
           {
             layer: drainageClassScoreLayer,
-            title: 'Drainage Class Scores',
           },
           {
             layer: soilDrainageClassLayer,
-            title: 'Soil',
           },
         ],
       }),
