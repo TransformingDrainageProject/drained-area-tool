@@ -93,6 +93,7 @@ require([
       version: '1.3.0',
       featureInfoFormat: 'application/json',
       featureInfoUrl: drainedAreaFeatureInfoURL,
+      listMode: 'hide-children',
       sublayers: [
         { name: 'drainedarea:state_w_drainclass', title: 'State Boundaries' },
       ],
@@ -104,6 +105,7 @@ require([
       version: '1.3.0',
       featureInfoFormat: 'application/json',
       featureInfoUrl: drainedAreaFeatureInfoURL,
+      listMode: 'hide-children',
       visible: false,
       sublayers: [
         {
@@ -119,6 +121,7 @@ require([
       version: '1.3.0',
       featureInfoFormat: 'application/json',
       featureInfoUrl: drainedAreaFeatureInfoURL,
+      listMode: 'hide-children',
       visible: false,
       sublayers: [
         {
@@ -136,6 +139,7 @@ require([
       opacity: 0.6,
       id: 'drainageClassScores',
       title: 'Agricultural Drainage Likely Extent',
+      listMode: 'hide-children',
     });
 
     const soilDrainageClassURL =
@@ -146,6 +150,7 @@ require([
       visible: false,
       id: 'drainageClassLayer',
       title: 'Natural Soil Drainage Classes',
+      listMode: 'hide-children',
     });
 
     map.layers.push(
