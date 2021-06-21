@@ -9,74 +9,10 @@ body,
   margin: 0;
 }
 
-.esriScalebar {
-  padding: 6px 38px 4px 4px;
-  background-color: white;
-  border-radius: 4px;
-  opacity: 0.6;
-  width: auto;
-  height: auto;
-}
-
-.esriScalebar:hover {
-  opacity: 0.99;
-}
-
-.esriScalebarLabel {
-  color: black;
-  font-family: Arial;
-  font-size: 9pt;
-}
-
-.esriScalebarLine {
-  border-color: black;
-}
-
-#layerListPane {
-  width: 18%;
-}
-
-.esriLayer {
-  background-color: #fff;
-  color: black;
-}
-
-.esriLayerList .esriList {
-  border-top: solid;
-}
-
-.esriLayerList .esriTitle {
-  background-color: #fff;
-  border-bottom: solid;
-  color: black;
-  font-size: 12pt;
-}
-
-.esriLayerList .esriList ul {
-  background-color: #fff;
-}
-
-#search {
-  display: block;
-  position: absolute;
-  z-index: 3;
-  top: 20px;
-  left: 75px;
-}
-
-#titlePane {
-  width: 15%;
-}
-
-#info {
-  position: absolute;
-  left: 30px;
-  bottom: 80px;
-  color: #000;
-  background-color: white;
-  z-index: 50;
-}
-
 #helpDiv {
   padding: 15px;
+}
+
+.esri-legend__layer-caption {
+  display: none !important;
 }
