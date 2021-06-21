@@ -149,7 +149,7 @@ require([
       opacity: 0.6,
       visible: false,
       id: 'drainageClassLayer',
-      title: 'Natural Soil Drainage Classes',
+      title: 'Soil Natural Drainage Class',
       listMode: 'hide-children',
     });
 
