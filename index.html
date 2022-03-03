@@ -2,26 +2,331 @@
 <html lang="en-us">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="This map identifies the potential suitability for subirrigation of land in the Midwestern United States." />
+    <meta
+      name="description"
+      content="This map identifies the potential suitability for subirrigation of land in the Midwestern United States."
+    />
     <title>Agricultural Drainage Likely Extent</title>
 
-    <link rel="stylesheet" href="https://js.arcgis.com/4.19/esri/themes/light/main.css" />
-    <link rel="stylesheet" href="./css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.19/esri/themes/light/main.css"
+    />
+    <style>
+      html,
+      body,
+      .container,
+      #viewDiv {
+        height: 92vh;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        margin: 0;
+      }
 
-    <script src="https://js.arcgis.com/4.19/"></script>
-    <script src="./js/map.js"></script>
+      #helpDiv {
+        padding: 15px;
+      }
+
+      .esri-legend__layer-caption {
+        display: none !important;
+      }
+    </style>
+    <script src="https://js.arcgis.com/4.22/"></script>
+    <script>
+      require([
+        'esri/geometry/Extent',
+        'esri/Graphic',
+        'esri/PopupTemplate',
+        'esri/layers/MapImageLayer',
+        'esri/layers/TileLayer',
+        'esri/Map',
+        'esri/rest/identify',
+        'esri/rest/support/IdentifyParameters',
+        'esri/views/MapView',
+        'esri/widgets/BasemapGallery',
+        'esri/widgets/Expand',
+        'esri/widgets/LayerList',
+        'esri/widgets/Legend',
+        'esri/widgets/ScaleBar',
+        'esri/widgets/Search',
+      ], function (
+        Extent,
+        Graphic,
+        PopupTemplate,
+        MapImageLayer,
+        TileLayer,
+        Map,
+        identify,
+        IdentifyParameters,
+        MapView,
+        BasemapGallery,
+        Expand,
+        LayerList,
+        Legend,
+        ScaleBar,
+        Search
+      ) {
+        // Initialize map
+        const drainedAreaUrl =
+          'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/likely_drained_agricultural_lands/MapServer';
+        let params;
+        const map = new Map({
+          basemap: 'topo-vector',
+        });
+
+        const view = new MapView({
+          container: 'viewDiv',
+          map: map,
+          zoom: 6,
+          center: [-97.048, 43.0],
+          extent: new Extent(
+            -100.00035920442963,
+            35.99568300000004,
+            -80.51845400000002,
+            49.38435800000008
+          ),
+        });
+
+        view.when(function () {
+          const search = new Search({ view: view });
+          view.ui.add(search, { position: 'top-right' });
+
+          const basemapGallery = new BasemapGallery({
+            view: view,
+            container: document.createElement('div'),
+          });
+
+          // Create an Expand instance and set the content
+          // property to the DOM node of the basemap gallery widget
+          // Use an Esri icon font to represent the content inside
+          // of the Expand widget
+          const bgExpand = new Expand({
+            view: view,
+            content: basemapGallery,
+          });
+          // close the expand whenver a basemap is selected
+          basemapGallery.watch('activeBasemap', function () {
+            const mobileSize =
+              view.heightBreakpoint === 'xsmall' ||
+              view.widthBreakpoint === 'xsmall';
+
+            if (mobileSize) {
+              bgExpand.collapse();
+            }
+          });
+          view.ui.add(bgExpand, 'top-left');
+
+          const scaleBar = new ScaleBar({ view: view, unit: 'dual' });
+          view.ui.add(scaleBar, { position: 'bottom-right' });
+
+          const drainedAreaLayer = new MapImageLayer({
+            url: drainedAreaUrl,
+            title: 'Boundaries',
+            sublayers: [
+              { id: 2, title: 'State Boundaries' },
+              { id: 3, title: 'County Boundaries', visible: false },
+              { id: 1, title: 'Watershed (HUC 8) Boundaries', visible: false },
+            ],
+          });
+
+          const drainageClassScoresURL =
+            'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Ag/Drainage_class_score2/MapServer';
+          const drainageClassScoreLayer = new MapImageLayer({
+            url: drainageClassScoresURL,
+            opacity: 0.6,
+            id: 'drainageClassScores',
+            title: 'Agricultural Drainage Likely Extent',
+            listMode: 'hide-children',
+          });
+
+          const soilDrainageClassURL =
+            'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_CONUS_Drainage_Classes/MapServer';
+          const soilDrainageClassLayer = new TileLayer({
+            url: soilDrainageClassURL,
+            opacity: 0.6,
+            visible: false,
+            id: 'drainageClassLayer',
+            title: 'Soil Natural Drainage Class',
+            listMode: 'hide-children',
+          });
+
+          map.layers.push(
+            soilDrainageClassLayer,
+            drainageClassScoreLayer,
+            drainedAreaLayer
+          );
+
+          const layerList = new Expand({
+            content: new LayerList({
+              view: view,
+            }),
+            view: view,
+            expanded: true,
+          });
+          view.ui.add(layerList, 'top-right');
+
+          const legend = new Expand({
+            content: new Legend({
+              view: view,
+              style: 'classic',
+              layerInfos: [
+                {
+                  layer: drainageClassScoreLayer,
+                },
+                {
+                  layer: soilDrainageClassLayer,
+                },
+              ],
+            }),
+            view: view,
+            expanded: true,
+          });
+          view.ui.add(legend, 'bottom-left');
+
+          view.popup.autoOpenEnabled = false;
+
+          // execute identify on each click
+          view.on('click', executeIdentify);
+
+          // identify parameters
+          params = new IdentifyParameters();
+          params.tolerance = 1;
+          params.layerOption = 'all';
+          params.width = view.width;
+          params.height = view.height;
+        });
+
+        function executeIdentify(event) {
+          // set geometry for click location
+          params.geometry = event.mapPoint;
+          params.mapExtent = view.extent;
+          document.getElementById('viewDiv').style.cursor = 'wait';
+
+          // call identify operation for clicked location
+          // resolve promise and populate pop-up
+          identify.identify(drainedAreaUrl, params).then(function (response) {
+            const features = response.results;
+
+            createPopup(event.mapPoint, features, view);
+          });
+        }
+
+        function createPopup(mapPoint, layers, view) {
+          let graphics = [];
+
+          if (layers.length > 0) {
+            layers.forEach(function (layer) {
+              let popupContent = '';
+              let popupGraphic = new Graphic();
+
+              const layerName = layer.layerName.split(' ')[0];
+              const props = layer.feature.attributes;
+
+              // drained class values
+              const likelyArea = parseFloat(props.LIKELY_AREA_AC);
+              const likelyPct = parseFloat(props.LIKELY_PCT);
+              const potentialArea = parseFloat(props.POTENTIALLY_AREA_AC);
+              const potentialPct = parseFloat(props.POTENTIALLY_PCT);
+              const unlikelyPct = parseFloat(props.UNLIKELY_PCT);
+              const totalPct = likelyPct + potentialPct + unlikelyPct;
+
+              // location name')
+              popupContent = `<strong>${
+                layerName === 'Watershed'
+                  ? `${props.NAME} (${props.HUC8})`
+                  : layerName === 'County'
+                  ? props.COUNTY_NAME
+                  : layerName === 'State'
+                  ? props.STATE_NAME
+                  : 'N/A'
+              }</strong><br /><br />`;
+
+              // area in acres
+              popupContent +=
+                '<table style="width: 90%"><tr><td><strong>Area in acres</strong></td><td></td></tr>';
+              popupContent += '<tr><td>Likely drained:</td>';
+              popupContent += `<td align="right">${formatNumber(
+                likelyArea
+              )} ac.</td></tr>`;
+              popupContent += '<tr><td>Likely or potentially drained:</td>';
+              popupContent += `<td align="right">${formatNumber(
+                likelyArea + potentialArea
+              )} ac.</td></tr></table><br />`;
+
+              // percent of state/county/huc8;
+              popupContent += `<table style="width: 90%"><tr><td><strong>Percent of ${layerName}</strong></td><td></td></tr>`;
+              popupContent += `<tr><td>Likely drained:</td>`;
+              popupContent += `<td align="right">${likelyPct.toFixed(
+                1
+              )}%</td></tr>`;
+              popupContent += `<tr><td>Likely or potentially drained:</td>`;
+              popupContent += `<td align="right">${(
+                likelyPct + potentialPct
+              ).toFixed(1)}%</td></tr></table><br />`;
+
+              // percent of ag land
+              const agLikely = (likelyPct / totalPct) * 100;
+              const agLikelyOrPotential =
+                ((likelyPct + potentialPct) / totalPct) * 100;
+              popupContent +=
+                '<table style="width: 90%"><tr><td><strong>Percent of ag land</strong></td><td></td></tr>';
+              popupContent += '<tr><td>Likely to be drained:</td>';
+              popupContent += `<td align="right">${agLikely.toFixed(
+                1
+              )}%</td></tr>`;
+              popupContent += '<tr><td>Likely or potentially drained:</td>';
+              popupContent += `<td align="right">${agLikelyOrPotential.toFixed(
+                1
+              )}%</td></tr></table>`;
+              popupContent;
+
+              // popup title and content
+              popupGraphic.popupTemplate = new PopupTemplate({
+                title: `Likely drained agricultural lands by ${layerName}`,
+                content: popupContent,
+              });
+
+              graphics.push(popupGraphic);
+            });
+          } else {
+            let popupContent = '';
+            let popupGraphic = new Graphic();
+            popupContent = 'No data is available for this area.';
+            popupGraphic.popupTemplate = new PopupTemplate({
+              title: 'No data',
+              content: popupContent,
+            });
+            graphics.push(popupGraphic);
+          }
+
+          function formatNumber(n) {
+            return parseFloat(n.toFixed(0)).toLocaleString();
+          }
+
+          view.popup.open({
+            location: mapPoint,
+            features: graphics,
+          });
+          document.getElementById('viewDiv').style.cursor = 'auto';
+        }
+      });
+    </script>
   </head>
   <body>
-    <div class="container" >
+    <div class="container">
       <div id="viewDiv"></div>
       <div id="helpDiv">
-          <strong>
-            Was this tool helpful? Please complete
-            <a href="https://forms.gle/6kf2zqAPFqQ16i7d9">our survey</a>
-            .
-          </strong>
+        <strong>
+          Was this tool helpful? Please complete
+          <a href="https://forms.gle/6kf2zqAPFqQ16i7d9">our survey</a>
+          .
+        </strong>
       </div>
     </div>
   </body>
