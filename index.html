@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="This map identifies the potential suitability for subirrigation of land in the Midwestern United States."
+      content="This map identifies the likely extent of drained agricultural land in the Midwestern United States."
     />
     <title>Agricultural Drainage Likely Extent</title>
 
@@ -158,6 +158,17 @@
             listMode: 'hide-children',
           });
 
+          const hillShadeURL =
+            'https://mapsweb.lib.purdue.edu/arcgis/rest/services/Isee/USA_Hillshade/MapServer';
+          const hillShadeLayer = new TileLayer({
+            url: hillShadeURL,
+            opacity: 0.3,
+            visible: false,
+            id: 'hillShadeLayer',
+            title: 'Elevation Hillshade',
+            listMode: 'hide-children',
+          });
+          
           map.layers.push(
             soilDrainageClassLayer,
             drainageClassScoreLayer,
@@ -187,8 +198,9 @@
             <strong>How to use this site</strong>
             <ol>
               <li>Click within the project area below to show results pop-up box for a specific location.</li>
-              <li>Within the pop-up box, use the arrows in the top right corner to cycle through results by HUC8 watershed, state, and county.</li>
+              <li>Within the pop-up box, use the arrows in the top right (or bottom right) corner to cycle through results by HUC8 watershed, state, and county.</li>
               <li>View the User Guide (linked to digital pdf) or Tutorial Video (linked to YouTube video) for more detailed information about the tool.</li>
+              <li>Collapse this and other panels by clicking the double arrow along the left or right margin of the panel.</li>
             </ol>
             `,
           });
