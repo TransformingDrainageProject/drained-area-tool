@@ -56,7 +56,6 @@
         'esri/widgets/ScaleBar',
         'esri/widgets/Search',
         'dojo/dom-construct',
-        'dojo/sniff',
       ], function (
         Extent,
         Graphic,
@@ -73,8 +72,7 @@
         Legend,
         ScaleBar,
         Search,
-        domConstruct,
-        sniff
+        domConstruct
       ) {
         // Initialize map
         const drainedAreaUrl =
@@ -171,7 +169,7 @@
               view: view,
             }),
             view: view,
-            expanded: sniff('android') || sniff('ios') ? false : true,
+            expanded: true,
           });
           view.ui.add(layerList, 'top-right');
 
@@ -198,7 +196,7 @@
             expandIconClass: 'esri-icon-question',
             view: view,
             content: instructionNode,
-            expanded: sniff('android') || sniff('ios') ? false : true,
+            expanded: true,
           });
           view.ui.add(instructionExpand, 'top-left');
 
@@ -217,7 +215,7 @@
               ],
             }),
             view: view,
-            expanded: sniff('android') || sniff('ios') ? false : true,
+            expanded: true,
           });
           view.ui.add(legend, 'bottom-left');
 
