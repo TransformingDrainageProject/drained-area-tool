@@ -55,6 +55,7 @@
         'esri/widgets/Legend',
         'esri/widgets/ScaleBar',
         'esri/widgets/Search',
+        'dojo/dom-construct',
       ], function (
         Extent,
         Graphic,
@@ -70,7 +71,8 @@
         LayerList,
         Legend,
         ScaleBar,
-        Search
+        Search,
+        domConstruct
       ) {
         // Initialize map
         const drainedAreaUrl =
@@ -120,7 +122,7 @@
               bgExpand.collapse();
             }
           });
-          view.ui.add(bgExpand, 'top-left');
+          view.ui.add(bgExpand, 'top-right');
 
           const scaleBar = new ScaleBar({ view: view, unit: 'dual' });
           view.ui.add(scaleBar, { position: 'bottom-right' });
@@ -171,6 +173,33 @@
           });
           view.ui.add(layerList, 'top-right');
 
+          // Instructions for using the site
+          const instructionStyle = {
+            backgroundColor: 'red',
+          };
+          const instructionNode = domConstruct.create('div', {
+            style: {
+              backgroundColor: '#FFFFFF',
+              padding: '15px',
+              width: '400px',
+            },
+            innerHTML: `
+            <strong>How to use this site</strong>
+            <ol>
+              <li>Click within the project area below to show results pop-up box for a specific location.</li>
+              <li>Within the pop-up box, use the arrows in the top right corner to cycle through results by HUC8 watershed, state, and county.</li>
+              <li>View the User Guide (linked to digital pdf) or Tutorial Video (linked to YouTube video) for more detailed information about the tool.</li>
+            </ol>
+            `,
+          });
+          const instructionExpand = new Expand({
+            expandIconClass: 'esri-icon-question',
+            view: view,
+            content: instructionNode,
+          });
+          view.ui.add(instructionExpand, 'top-right');
+
+          // Construct legend
           const legend = new Expand({
             content: new Legend({
               view: view,
